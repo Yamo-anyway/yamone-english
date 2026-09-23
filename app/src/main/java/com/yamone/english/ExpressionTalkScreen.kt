@@ -146,6 +146,7 @@ private fun NaturalExpressionTrainingContent(
                             spokenScore = -1
                         }
                     },
+                    enabled = !isListening,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Default.Mic, contentDescription = null)
@@ -236,6 +237,7 @@ private fun NaturalExpressionTrainingContent(
                                 )
                             }
                         },
+                        enabled = !isListening,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.Mic, contentDescription = null)
@@ -370,6 +372,7 @@ private fun OfflineFreeTalkContent(
                     coach = LocalConversationEngine.reply(text)
                 }
             },
+            enabled = !isListening,
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(Icons.Default.Mic, contentDescription = null)
