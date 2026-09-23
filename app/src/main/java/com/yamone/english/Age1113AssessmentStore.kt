@@ -3,26 +3,28 @@ package com.yamone.english
 import android.content.Context
 
 class Age1113AssessmentStore(context: Context) {
-    private val prefs =
-        context.getSharedPreferences("yamone_english_assessment_11_13", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(
+        PersistenceContract.assessmentPrefs(CourseLevel.AGE_11_13),
+        Context.MODE_PRIVATE
+    )
 
     fun save(summary: Age1113AssessmentSummary) {
         prefs.edit()
-            .putInt("listening", summary.listeningCorrect)
-            .putInt("speaking", summary.speakingCorrect)
-            .putInt("order", summary.orderCorrect)
-            .putInt("situation", summary.situationCorrect)
-            .putLong("completed_at", System.currentTimeMillis())
+            .putInt(PersistenceContract.ASSESSMENT_LISTENING, summary.listeningCorrect)
+            .putInt(PersistenceContract.ASSESSMENT_SPEAKING, summary.speakingCorrect)
+            .putInt(PersistenceContract.ASSESSMENT_ORDER, summary.orderCorrect)
+            .putInt(PersistenceContract.ASSESSMENT_SITUATION, summary.situationCorrect)
+            .putLong(PersistenceContract.ASSESSMENT_COMPLETED_AT, System.currentTimeMillis())
             .apply()
     }
 
     fun latest(): Age1113AssessmentSummary? {
-        if (!prefs.contains("completed_at")) return null
+        if (!prefs.contains(PersistenceContract.ASSESSMENT_COMPLETED_AT)) return null
         return Age1113AssessmentSummary(
-            listeningCorrect = prefs.getInt("listening", 0),
-            speakingCorrect = prefs.getInt("speaking", 0),
-            orderCorrect = prefs.getInt("order", 0),
-            situationCorrect = prefs.getInt("situation", 0)
+            listeningCorrect = prefs.getInt(PersistenceContract.ASSESSMENT_LISTENING, 0),
+            speakingCorrect = prefs.getInt(PersistenceContract.ASSESSMENT_SPEAKING, 0),
+            orderCorrect = prefs.getInt(PersistenceContract.ASSESSMENT_ORDER, 0),
+            situationCorrect = prefs.getInt(PersistenceContract.ASSESSMENT_SITUATION, 0)
         )
     }
 }
