@@ -292,7 +292,7 @@ private fun YamoneEnglishApp() {
         return
     }
 
-    if (showAssessment) {
+    if (showAssessment && selectedCourse != CourseLevel.AGE_11_13) {
         val reviewCallback: (Int, ReviewKind, Boolean) -> Unit = { id, kind, success ->
             if (success) reviewStore.recordSuccess(id, kind)
             else reviewStore.recordError(id, kind)
@@ -632,51 +632,71 @@ private fun TodayScreen(
             }
         }
 
-        if (course == CourseLevel.AGE_5_7) {
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                    onClick = onOpenAssessment,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(Modifier.padding(18.dp)) {
-                        Text("5~7세 과정 테스트", fontWeight = FontWeight.Bold)
-                        Text("듣기 · 말하기 · 어순 · 상황 대응 16문항")
-                        Spacer(Modifier.height(8.dp))
-                        if (latestAssessment == null) {
-                            Text("100개 레슨을 마친 뒤 실력을 확인해보세요.")
-                        } else {
-                            Text(
-                                "최근 결과 " + latestAssessment.totalCorrect + " / " +
-                                    latestAssessment.totalQuestions + " · " + latestAssessment.overallLabel,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
+        when (course) {
+            CourseLevel.AGE_5_7 -> {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                        onClick = onOpenAssessment,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(Modifier.padding(18.dp)) {
+                            Text("5~7세 과정 테스트", fontWeight = FontWeight.Bold)
+                            Text("듣기 · 말하기 · 어순 · 상황 대응 16문항")
+                            Spacer(Modifier.height(8.dp))
+                            if (latestAssessment == null) {
+                                Text("100개 레슨을 마친 뒤 실력을 확인해보세요.")
+                            } else {
+                                Text(
+                                    "최근 결과 " + latestAssessment.totalCorrect + " / " +
+                                        latestAssessment.totalQuestions + " · " + latestAssessment.overallLabel,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
             }
-        } else {
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                    onClick = onOpenAssessment,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(Modifier.padding(18.dp)) {
-                        Text("8~10세 과정 테스트", fontWeight = FontWeight.Bold)
-                        Text("듣기 · 말하기 · 어순 · 상황·추론 20문항")
-                        Spacer(Modifier.height(8.dp))
-                        if (latestAge810Assessment == null) {
-                            Text("100개 레슨을 마친 뒤 실력을 확인해보세요.")
-                        } else {
-                            Text(
-                                "최근 결과 " + latestAge810Assessment.totalCorrect + " / " +
-                                    latestAge810Assessment.totalQuestions + " · " +
-                                    latestAge810Assessment.overallLabel,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
+
+            CourseLevel.AGE_8_10 -> {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                        onClick = onOpenAssessment,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(Modifier.padding(18.dp)) {
+                            Text("8~10세 과정 테스트", fontWeight = FontWeight.Bold)
+                            Text("듣기 · 말하기 · 어순 · 상황·추론 20문항")
+                            Spacer(Modifier.height(8.dp))
+                            if (latestAge810Assessment == null) {
+                                Text("100개 레슨을 마친 뒤 실력을 확인해보세요.")
+                            } else {
+                                Text(
+                                    "최근 결과 " + latestAge810Assessment.totalCorrect + " / " +
+                                        latestAge810Assessment.totalQuestions + " · " +
+                                        latestAge810Assessment.overallLabel,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            CourseLevel.AGE_11_13 -> {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(Modifier.padding(18.dp)) {
+                            Text("11~13세 과정 · 1차", fontWeight = FontWeight.Bold)
+                            Text("현재 50개 레슨으로 시작합니다.")
+                            Spacer(Modifier.height(8.dp))
+                            Text("의견·근거 · 계획·협업 · 관계·갈등 · 정보 판단 · 목표·성찰")
                         }
                     }
                 }
@@ -1447,7 +1467,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.2.2")
+        Text("Yamone English v0.3.0")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
     }
