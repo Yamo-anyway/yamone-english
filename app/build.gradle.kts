@@ -12,8 +12,8 @@ android {
         applicationId = "com.yamone.english"
         minSdk = 26
         targetSdk = 35
-        versionCode = 27
-        versionName = "0.7.1"
+        versionCode = 28
+        versionName = "0.8.0"
     }
 
     compileOptions {
