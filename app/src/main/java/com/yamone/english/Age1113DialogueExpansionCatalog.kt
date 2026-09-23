@@ -324,7 +324,7 @@ object Age1113DialogueExpansionCatalog {
         )),
         LessonDialogue(391, listOf(
             DialogueLine("A", "What have you been reading about lately?", "요즘 뭐에 대해 읽고 있어?"),
-            DialogueLine("B", "I've been getting interested in this lately.", "요즘 이 분야가 궁금해."),
+            DialogueLine("B", "I've been getting more interested in this lately.", "요즘 이 분야가 궁금해."),
             DialogueLine("A", "What field?", "어떤 분야?"),
             DialogueLine("B", "Robotics.", "로봇공학."),
             DialogueLine("A", "What do you like about it?", "뭐가 좋아?"),
