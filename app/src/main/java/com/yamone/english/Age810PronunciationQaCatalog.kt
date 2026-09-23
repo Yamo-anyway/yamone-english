@@ -45,7 +45,7 @@ object Age810PronunciationQaCatalog {
         PronunciationQaGuide(241, "I'm ●NER-vous about to●MOR-row ↘", "아임 / 너버스 / 어바웃 / 투마로우", "아임 ●너버스 어바웃 투●마로우↘", "약-강-약-강 ↘"),
         PronunciationQaGuide(242, "Don't WOR-ry too ●MUCH ↘", "돈트 / 워리 / 투 / 머치", "돈 ●워리 투 ●머치↘", "약-강-약-강 ↘"),
         PronunciationQaGuide(243, "I'm ●PROUD of my●SELF ↘", "아임 / 프라우드 / 어브 / 마이셀프", "아임 ●프라우더브 마이●셀프↘", "약-강-약-강 ↘"),
-        PronunciationQaGuide(244, "I was disap●POINT-ed ↘", "아이 / 워즈 / 디서포인티드", "아이 워즈 디서●포인릿↘", "약-약-강 ↘"),
+        PronunciationQaGuide(244, "I was disap●POINT-ed ↘", "아이 / 워즈 / 디서포인티드", "아이 워즈 디서●포인티드↘", "약-약-강 ↘"),
         PronunciationQaGuide(245, "That sur●PRISED me ↘", "댓 / 서프라이즈드 / 미", "댓 서●프라이즈드 미↘", "약-강-약 ↘"),
         PronunciationQaGuide(246, "I didn't MEAN to hurt your ●FEEL-ings ↘", "아이 / 디든트 / 민 / 투 / 허트 / 유어 / 필링즈", "아이 디든 ●민 터 허츄어 ●필링즈↘", "약-약-강-약-약-약-강 ↘"),
         PronunciationQaGuide(247, "Are‿you o●KAY with ●THAT ↗", "아 / 유 / 오케이 / 위드 / 댓", "얼유 오●케이 위드 ●댓↗", "약-약-강-약-강 ↗"),
