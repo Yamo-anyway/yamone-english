@@ -15,6 +15,7 @@ class VoiceController(private val context: Context) : RecognitionListener {
 
     private var resultHandler: ((String) -> Unit)? = null
     private var errorHandler: ((String) -> Unit)? = null
+    private var active = false
 
     init {
         recognizer?.setRecognitionListener(this)
@@ -31,6 +32,11 @@ class VoiceController(private val context: Context) : RecognitionListener {
             return
         }
 
+        if (active) {
+            target.cancel()
+            active = false
+        }
+
         resultHandler = onResult
         errorHandler = onError
 
@@ -41,32 +47,78 @@ class VoiceController(private val context: Context) : RecognitionListener {
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
         }
-        target.startListening(intent)
+
+        runCatching {
+            active = true
+            target.startListening(intent)
+        }.onFailure {
+            active = false
+            clearHandlers()
+            onError("음성 인식을 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.")
+        }
     }
 
-    fun stop() = recognizer?.stopListening()
-    fun destroy() = recognizer?.destroy()
+    fun stop() {
+        if (!active) return
+        recognizer?.stopListening()
+    }
+
+    fun cancel() {
+        recognizer?.cancel()
+        active = false
+        clearHandlers()
+    }
+
+    fun destroy() {
+        recognizer?.cancel()
+        recognizer?.destroy()
+        active = false
+        clearHandlers()
+    }
 
     override fun onResults(results: Bundle?) {
+        active = false
+        val onResult = resultHandler
+        val onError = errorHandler
+        clearHandlers()
+
         val text = results
             ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
             ?.firstOrNull()
             .orEmpty()
-        resultHandler?.invoke(text)
+            .trim()
+
+        if (text.isBlank()) {
+            onError?.invoke("잘 듣지 못했어요. 다시 말해보세요.")
+        } else {
+            onResult?.invoke(text)
+        }
     }
 
     override fun onError(error: Int) {
+        active = false
+        val callback = errorHandler
+        clearHandlers()
+
         val message = when (error) {
             SpeechRecognizer.ERROR_AUDIO -> "마이크 입력을 확인해 주세요."
             SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "마이크 권한이 필요합니다."
             SpeechRecognizer.ERROR_NETWORK,
             SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "음성 인식 네트워크 상태를 확인해 주세요."
             SpeechRecognizer.ERROR_NO_MATCH -> "잘 듣지 못했어요. 다시 말해보세요."
-            SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "잠시 후 다시 말해보세요."
+            SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "음성 인식이 사용 중입니다. 잠시 후 다시 말해보세요."
             SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "말소리가 들리지 않았어요."
+            SpeechRecognizer.ERROR_CLIENT -> "음성 인식이 취소되었습니다."
+            SpeechRecognizer.ERROR_SERVER,
+            SpeechRecognizer.ERROR_SERVER_DISCONNECTED -> "음성 인식 서비스 연결을 확인해 주세요."
             else -> "음성 인식 중 오류가 발생했습니다."
         }
-        errorHandler?.invoke(message)
+        callback?.invoke(message)
+    }
+
+    private fun clearHandlers() {
+        resultHandler = null
+        errorHandler = null
     }
 
     override fun onReadyForSpeech(params: Bundle?) = Unit
@@ -86,19 +138,24 @@ class EnglishTts(context: Context) {
         tts = TextToSpeech(context) { status ->
             ready = status == TextToSpeech.SUCCESS
             if (ready) {
-                tts?.language = Locale.US
+                val engine = tts
+                val result = engine?.setLanguage(Locale.US)
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    ready = false
+                }
             }
         }
     }
 
-    fun speak(text: String, rate: Float = 0.85f) {
-        val engine = tts ?: return
-        if (!ready) return
+    fun speak(text: String, rate: Float = 0.85f): Boolean {
+        val engine = tts ?: return false
+        if (!ready || text.isBlank()) return false
         engine.setSpeechRate(rate.coerceIn(0.5f, 1.2f))
-        engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "yamone-english")
+        return engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "yamone-english") != TextToSpeech.ERROR
     }
 
     fun shutdown() {
+        ready = false
         tts?.stop()
         tts?.shutdown()
         tts = null
