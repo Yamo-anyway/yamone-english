@@ -712,7 +712,7 @@ private fun PhraseCard(english: String, korean: String?) {
 
 @Composable
 private fun PronunciationGuideCard(lesson: Lesson) {
-    val guide = SoundGuideCatalog.byLessonId(lesson.id)
+    val guide = PronunciationQaCatalog.byLessonId(lesson.id)
 
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
@@ -725,7 +725,7 @@ private fun PronunciationGuideCard(lesson: Lesson) {
             Text("소리 가이드", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
 
             Text("영문 리듬", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
-            Text(lesson.soundEnglish, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text(guide.rhythmEnglish, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
 
             Text("천천히", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
             Text(guide.slowKorean, fontSize = 18.sp)
@@ -1144,7 +1144,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.1.9")
+        Text("Yamone English v0.1.10")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
 }
