@@ -365,7 +365,7 @@ private fun YamoneEnglishApp() {
             )
             AppTab.REVIEW -> UnifiedReviewScreen(
                 modifier = Modifier.padding(padding),
-                items = unifiedReviewItems,
+                reviewItems = unifiedReviewItems,
                 isListening = isListening,
                 speak = { tts.speak(it, speechRate) },
                 listen = startListening,
