@@ -338,9 +338,16 @@ private fun YamoneEnglishApp() {
             AppTab.TODAY -> TodayScreen(
                 modifier = Modifier.padding(padding),
                 completed = completed,
+                thinkingCompletedCount = thinkingCompleted.size,
+                expressionCompletedCount = expressionCompleted.size,
+                reviewDueCount = unifiedReviewItems.count { it.isDue },
                 latestAssessment = latestAssessment,
                 onOpenLesson = { selectedLesson = it },
-                onOpenAssessment = { showAssessment = true }
+                onOpenAssessment = { showAssessment = true },
+                onOpenListening = { tabIndex = AppTab.LISTEN.ordinal },
+                onOpenThinking = { tabIndex = AppTab.THINK.ordinal },
+                onOpenTalk = { tabIndex = AppTab.TALK.ordinal },
+                onOpenReview = { tabIndex = AppTab.REVIEW.ordinal }
             )
             AppTab.LISTEN -> EnhancedListenScreen(
                 modifier = Modifier.padding(padding),
@@ -426,12 +433,24 @@ private fun YamoneEnglishApp() {
 private fun TodayScreen(
     modifier: Modifier = Modifier,
     completed: Set<Int>,
+    thinkingCompletedCount: Int,
+    expressionCompletedCount: Int,
+    reviewDueCount: Int,
     latestAssessment: AssessmentSummary?,
     onOpenLesson: (Lesson) -> Unit,
-    onOpenAssessment: () -> Unit
+    onOpenAssessment: () -> Unit,
+    onOpenListening: () -> Unit,
+    onOpenThinking: () -> Unit,
+    onOpenTalk: () -> Unit,
+    onOpenReview: () -> Unit
 ) {
     val total = LessonCatalog.lessons.size
     val next = LessonCatalog.lessons.firstOrNull { it.id !in completed } ?: LessonCatalog.lessons.last()
+    var sectionIndex by rememberSaveable(completed.size) {
+        mutableIntStateOf(Age57CourseSections.indexForLesson(next.id))
+    }
+    val selectedSection = Age57CourseSections.sections[sectionIndex]
+    val sectionLessons = selectedSection.lessons()
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -482,6 +501,54 @@ private fun TodayScreen(
         }
 
         item {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("오늘 할 일", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        "레슨 " + completed.size + "/" + total +
+                            " · 어순 " + thinkingCompletedCount + "/" + total +
+                            " · 내 표현 " + expressionCompletedCount + "/" +
+                            NaturalExpressionCatalog.expressions.size,
+                        fontSize = 13.sp
+                    )
+
+                    if (reviewDueCount > 0) {
+                        Button(
+                            onClick = onOpenReview,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("오늘 복습 " + reviewDueCount + "개 먼저 하기")
+                        }
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = onOpenListening,
+                            modifier = Modifier.weight(1f)
+                        ) { Text("듣기") }
+                        OutlinedButton(
+                            onClick = onOpenThinking,
+                            modifier = Modifier.weight(1f)
+                        ) { Text("어순") }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = onOpenTalk,
+                            modifier = Modifier.weight(1f)
+                        ) { Text("내 표현") }
+                        OutlinedButton(
+                            onClick = onOpenReview,
+                            modifier = Modifier.weight(1f)
+                        ) { Text("복습") }
+                    }
+                }
+            }
+        }
+
+        item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
                 onClick = onOpenAssessment,
@@ -507,10 +574,23 @@ private fun TodayScreen(
 
         item {
             Spacer(Modifier.height(4.dp))
-            Text("전체 레슨", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text("레슨 찾기", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(Age57CourseSections.sections, key = { it.id }) { section ->
+                    val index = Age57CourseSections.sections.indexOf(section)
+                    FilterChip(
+                        selected = sectionIndex == index,
+                        onClick = { sectionIndex = index },
+                        label = { Text(section.title) }
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(selectedSection.title, fontWeight = FontWeight.Bold)
         }
 
-        items(LessonCatalog.lessons, key = { it.id }) { lesson ->
+        items(sectionLessons, key = { it.id }) { lesson ->
             LessonCard(
                 lesson = lesson,
                 completed = lesson.id in completed,
@@ -1224,7 +1304,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.1.12")
+        Text("Yamone English v0.1.13")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
 }
