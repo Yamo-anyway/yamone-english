@@ -46,19 +46,19 @@ private data class ReviewChunk(
 @Composable
 fun UnifiedReviewScreen(
     modifier: Modifier = Modifier,
-    items: List<UnifiedReviewItem>,
+    reviewItems: List<UnifiedReviewItem>,
     isListening: Boolean,
     speak: (String) -> Unit,
     listen: ((String) -> Unit) -> Unit,
     onResult: (Int, ReviewKind, Boolean) -> Unit
 ) {
-    val dueItems = items.filter { it.isDue }
-    val laterItems = items.filterNot { it.isDue }
+    val dueItems = reviewItems.filter { it.isDue }
+    val laterItems = reviewItems.filterNot { it.isDue }
 
-    var selectedLessonId by rememberSaveable(items) {
-        mutableIntStateOf(dueItems.firstOrNull()?.lessonId ?: items.firstOrNull()?.lessonId ?: 0)
+    var selectedLessonId by rememberSaveable(reviewItems) {
+        mutableIntStateOf(dueItems.firstOrNull()?.lessonId ?: reviewItems.firstOrNull()?.lessonId ?: 0)
     }
-    val selectedItem = items.firstOrNull { it.lessonId == selectedLessonId }
+    val selectedItem = reviewItems.firstOrNull { it.lessonId == selectedLessonId }
     val lesson = LessonCatalog.byId(selectedLessonId)
 
     var selectedKindName by rememberSaveable(selectedLessonId) {
@@ -83,7 +83,7 @@ fun UnifiedReviewScreen(
             )
         }
 
-        if (items.isEmpty()) {
+        if (reviewItems.isEmpty()) {
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(24.dp)) {
@@ -97,7 +97,7 @@ fun UnifiedReviewScreen(
             item {
                 Text("복습 문장", fontSize = 21.sp, fontWeight = FontWeight.Bold)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(items, key = { it.lessonId }) { item ->
+                    items(reviewItems, key = { it.lessonId }) { item ->
                         val lessonItem = LessonCatalog.byId(item.lessonId)
                         FilterChip(
                             selected = item.lessonId == selectedLessonId,
