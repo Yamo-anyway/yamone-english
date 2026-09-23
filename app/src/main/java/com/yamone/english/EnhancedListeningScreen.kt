@@ -51,6 +51,20 @@ fun EnhancedListenScreen(
     val courseLessons = CourseCatalog.lessons(course)
     val courseSections = CourseCatalog.sections(course)
 
+    if (courseLessons.isEmpty() || courseSections.isEmpty()) {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("듣기 훈련", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            Text("이 과정의 학습 데이터를 불러올 수 없습니다.")
+            Text("앱을 다시 실행한 뒤에도 계속되면 최신 버전으로 업데이트해 주세요.")
+        }
+        return
+    }
+
     var selectedLessonId by rememberSaveable(course.name) {
         mutableIntStateOf(courseLessons.first().id)
     }
@@ -70,13 +84,15 @@ fun EnhancedListenScreen(
     var selectedMeaning by rememberSaveable(selectedLessonId) { mutableStateOf<String?>(null) }
     var showDialogue by rememberSaveable(selectedLessonId) { mutableStateOf(false) }
 
-    val lesson = LessonCatalog.byId(selectedLessonId) ?: courseLessons.first()
-    val selectedSection = courseSections[sectionIndex]
-    val sectionLessons = selectedSection.lessons()
+    val lesson = LessonCatalog.byId(selectedLessonId)
+        ?.takeIf { it.course == course }
+        ?: courseLessons.first()
+    val selectedSection = courseSections.getOrElse(sectionIndex) { courseSections.first() }
+    val sectionLessons = selectedSection.lessons().filter { it.course == course }
     val dialogue = DialogueCatalog.byLessonId(lesson.id)
     val mode = ListenMode.entries[listenModeIndex]
     val voiceMode = ListenVoiceMode.entries[voiceModeIndex]
-    val meaningChoices = remember(lesson.id) { buildMeaningChoices(lesson) }
+    val meaningChoices = remember(lesson.id, course) { buildMeaningChoices(lesson) }
 
     fun startPlayback(label: String, segments: List<ListeningSegment>, rate: Float = drillRate) {
         isPlaying = true
@@ -158,7 +174,9 @@ fun EnhancedListenScreen(
                             player.stop()
                             isPlaying = false
                             sectionIndex = index
-                            selectedLessonId = section.internalIds.first
+                            selectedLessonId = section.internalIds.firstOrNull()
+                                ?.takeIf { id -> LessonCatalog.byId(id)?.course == course }
+                                ?: selectedLessonId
                         },
                         label = { Text(section.title) }
                     )
@@ -174,7 +192,7 @@ fun EnhancedListenScreen(
                             isPlaying = false
                             selectedLessonId = item.id
                         },
-                        label = { Text(item.id.toString()) }
+                        label = { Text(item.courseLessonNumber.toString()) }
                     )
                 }
             }
@@ -471,7 +489,7 @@ fun EnhancedListenScreen(
                     player.stop()
                     isPlaying = false
                     val currentIndex = courseLessons.indexOfFirst { it.id == selectedLessonId }
-                    val nextLesson = if (currentIndex >= courseLessons.lastIndex) {
+                    val nextLesson = if (currentIndex < 0 || currentIndex >= courseLessons.lastIndex) {
                         courseLessons.first()
                     } else {
                         courseLessons[currentIndex + 1]
@@ -488,7 +506,9 @@ fun EnhancedListenScreen(
 }
 
 private fun buildMeaningChoices(lesson: Lesson): List<String> {
-    val lessons = LessonCatalog.lessons
+    val lessons = CourseCatalog.lessons(lesson.course)
+    if (lessons.isEmpty()) return listOf(lesson.meaning)
+
     val index = lessons.indexOfFirst { it.id == lesson.id }.coerceAtLeast(0)
 
     val candidates = mutableListOf(
@@ -498,7 +518,7 @@ private fun buildMeaningChoices(lesson: Lesson): List<String> {
     ).distinct().toMutableList()
 
     var offset = 1
-    while (candidates.size < 3) {
+    while (candidates.size < 3 && offset <= lessons.size) {
         val candidate = lessons[(index + offset) % lessons.size].meaning
         if (candidate !in candidates) candidates += candidate
         offset += 1
