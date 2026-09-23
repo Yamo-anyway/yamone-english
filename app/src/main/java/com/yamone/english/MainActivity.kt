@@ -808,7 +808,7 @@ private fun ListenScreen(
             ) {
                 Icon(Icons.Default.VolumeUp, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
-                Text("24개 레슨 전체 연속 듣기")
+                Text(LessonCatalog.lessons.size.toString() + "개 레슨 전체 연속 듣기")
             }
         }
 
@@ -1074,7 +1074,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.1.3")
+        Text("Yamone English v0.1.5")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
 }
