@@ -115,7 +115,8 @@ object PronunciationQaCatalog {
     private val allGuides =
         guides +
             Age810PronunciationQaCatalog.guides +
-            Age1113PronunciationQaCatalog.guides
+            Age1113PronunciationQaCatalog.guides +
+            Age1416PronunciationQaCatalog.guides
 
     fun byLessonId(id: Int): PronunciationQaGuide =
         allGuides.firstOrNull { it.lessonId == id }
