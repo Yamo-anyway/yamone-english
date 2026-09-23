@@ -5,27 +5,11 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Apply v0.7.1 source patch
-        run: python3 tools/apply_v071.py
-
-      - name: Commit source patch if needed
-        run: |
-          if ! git diff --quiet; then
-            git config user.name "yamone-ci"
-            git config user.email "actions@users.noreply.github.com"
-            git add app/src/main/java/com/yamone/english/MainActivity.kt app/src/main/java/com/yamone/english/Age1720ExpansionCatalog.kt
-            git commit -m "feat: wire age 17-20 assessment and quality fixes"
-            git push origin HEAD:main
-          fi
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
