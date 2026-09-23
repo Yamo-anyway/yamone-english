@@ -52,6 +52,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -649,6 +650,11 @@ private fun LessonScreen(
     var recognized by remember { mutableStateOf("") }
     var matchScore by remember { mutableIntStateOf(-1) }
     var coachReply by remember { mutableStateOf("") }
+    val lessonScrollState = rememberScrollState()
+
+    LaunchedEffect(stage, lesson.id) {
+        lessonScrollState.scrollTo(0)
+    }
 
     Scaffold(
         topBar = {
@@ -665,7 +671,7 @@ private fun LessonScreen(
                 .padding(padding)
                 .padding(horizontal = 20.dp)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(lessonScrollState),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             LinearProgressIndicator(
@@ -724,6 +730,7 @@ private fun LessonScreen(
                                 onSpeakingResult(lesson.id, matchScore >= 75)
                             }
                         },
+                        enabled = !isListening,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.Mic, contentDescription = null)
@@ -748,6 +755,7 @@ private fun LessonScreen(
                         onClick = {
                             listen { text -> recognized = text }
                         },
+                        enabled = !isListening,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.Mic, contentDescription = null)
@@ -785,6 +793,7 @@ private fun LessonScreen(
                                 coachReply = LocalConversationEngine.reply(text)
                             }
                         },
+                        enabled = !isListening,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.Mic, contentDescription = null)
@@ -808,10 +817,13 @@ private fun LessonScreen(
                     Text("잘했어요!", fontSize = 34.sp, fontWeight = FontWeight.Bold)
                     Text("이 표현은 완료 처리됐습니다. 나중에 다른 대화 속에서 다시 만나게 됩니다.")
                     Button(
-                        onClick = { onOpenNext(lesson.id) },
+                        onClick = {
+                            if (lesson.id < LessonCatalog.lessons.size) onOpenNext(lesson.id)
+                            else onBack()
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(if (lesson.id < LessonCatalog.lessons.size) "다음 레슨" else "처음으로")
+                        Text(if (lesson.id < LessonCatalog.lessons.size) "다음 레슨" else "홈으로")
                     }
                     OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
                         Text("홈으로")
