@@ -52,7 +52,9 @@ fun ThinkingTrainingScreen(
     isListening: Boolean,
     speak: (String) -> Unit,
     listen: ((String) -> Unit) -> Unit,
-    onComplete: (Int) -> Unit
+    onComplete: (Int) -> Unit,
+    onOrderResult: (Int, Boolean) -> Unit,
+    onSpeakingResult: (Int, Boolean) -> Unit
 ) {
     var selectedLessonId by rememberSaveable { mutableIntStateOf(1) }
 
@@ -218,6 +220,7 @@ fun ThinkingTrainingScreen(
                         arrangementCorrect = normalizeThinking(
                             selectedChunks.joinToString(" ") { it.text }
                         ) == normalizeThinking(lesson.target)
+                        onOrderResult(lesson.id, arrangementCorrect)
                     },
                     enabled = selectedChunkIds.size == chunks.size,
                     modifier = Modifier.weight(1f)
@@ -284,6 +287,7 @@ fun ThinkingTrainingScreen(
                         listen { text ->
                             spokenText = text
                             spokenScore = thinkingSentenceMatch(text, lesson.target)
+                            onSpeakingResult(lesson.id, spokenScore >= 75)
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
