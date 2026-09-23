@@ -12,7 +12,7 @@ data class LessonDialogue(
 )
 
 object DialogueCatalog {
-    val dialogues = listOf(
+    private val baseDialogues = listOf(
         LessonDialogue(1, listOf(
             DialogueLine("A", "Hi! What's your name?", "안녕! 이름이 뭐야?"),
             DialogueLine("B", "Hi, I'm Mina.", "안녕, 나는 미나야."),
@@ -414,6 +414,8 @@ object DialogueCatalog {
             DialogueLine("B", "Okay!", "좋아!")
         ))
     )
+
+    val dialogues: List<LessonDialogue> = baseDialogues + DialogueExpansionCatalog.dialogues
 
     fun byLessonId(id: Int): LessonDialogue? = dialogues.firstOrNull { it.lessonId == id }
 }
