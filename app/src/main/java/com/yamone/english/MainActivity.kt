@@ -465,7 +465,6 @@ private fun LessonScreen(
                     PhraseCard(lesson.target, if (showKorean) lesson.meaning else null)
                     if (showSoundGuide) PronunciationGuideCard(lesson)
                     InfoCard("상황", lesson.situation)
-                    InfoCard("이어지는 소리", lesson.connectedNote)
                     Button(onClick = { speak(lesson.target) }, modifier = Modifier.fillMaxWidth()) {
                         Text("다시 듣기")
                     }
@@ -643,19 +642,29 @@ private fun PhraseCard(english: String, korean: String?) {
 
 @Composable
 private fun PronunciationGuideCard(lesson: Lesson) {
+    val guide = SoundGuideCatalog.byLessonId(lesson.id)
+
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(7.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text("소리 가이드", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+
+            Text("영문 리듬", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
             Text(lesson.soundEnglish, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            Text(lesson.soundKorean, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-            Text("● 강세  ·  ‿ 붙여 읽기  ·  | 짧은 쉼  ·  ↗ 올림  ·  ↘ 내림", fontSize = 12.sp)
-            Text("한글 표기는 실제 영어 소리를 익히기 위한 보조 표시입니다. 반드시 음성과 함께 들어보세요.", fontSize = 12.sp)
+
+            Text("천천히", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+            Text(guide.slowKorean, fontSize = 18.sp)
+
+            Text("실제 소리", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+            Text(guide.naturalKorean, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+
+            Text("강약 · 억양", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+            Text(guide.rhythm, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -1065,7 +1074,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.1.2")
+        Text("Yamone English v0.1.3")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
 }
