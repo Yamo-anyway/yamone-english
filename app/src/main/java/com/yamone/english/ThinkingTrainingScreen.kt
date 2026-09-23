@@ -57,8 +57,11 @@ fun ThinkingTrainingScreen(
     onSpeakingResult: (Int, Boolean) -> Unit
 ) {
     var selectedLessonId by rememberSaveable { mutableIntStateOf(1) }
+    var sectionIndex by rememberSaveable { mutableIntStateOf(0) }
 
     val lesson = LessonCatalog.byId(selectedLessonId) ?: LessonCatalog.lessons.first()
+    val selectedSection = Age57CourseSections.sections[sectionIndex]
+    val sectionLessons = selectedSection.lessons()
     val guide = ThinkingCatalog.byLessonId(lesson.id)
 
     var showOrderHint by rememberSaveable(selectedLessonId) { mutableStateOf(false) }
@@ -103,7 +106,21 @@ fun ThinkingTrainingScreen(
             Text("레슨", fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(LessonCatalog.lessons, key = { it.id }) { item ->
+                items(Age57CourseSections.sections, key = { it.id }) { section ->
+                    val index = Age57CourseSections.sections.indexOf(section)
+                    FilterChip(
+                        selected = sectionIndex == index,
+                        onClick = {
+                            sectionIndex = index
+                            selectedLessonId = section.range.first
+                        },
+                        label = { Text(section.title) }
+                    )
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(sectionLessons, key = { it.id }) { item ->
                     FilterChip(
                         selected = selectedLessonId == item.id,
                         onClick = {
@@ -315,6 +332,7 @@ fun ThinkingTrainingScreen(
                         onComplete(lesson.id)
                         selectedLessonId =
                             if (lesson.id >= LessonCatalog.lessons.size) 1 else lesson.id + 1
+                        sectionIndex = Age57CourseSections.indexForLesson(selectedLessonId)
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
