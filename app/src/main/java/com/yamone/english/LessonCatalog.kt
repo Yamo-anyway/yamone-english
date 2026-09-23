@@ -78,7 +78,8 @@ object LessonCatalog {
             Age1113LessonCatalog.lessons +
             Age1416LessonCatalog.lessons +
             Age1416LessonExpansionCatalog.lessons +
-            Age1720LessonCatalog.lessons
+            Age1720LessonCatalog.lessons +
+            Age1720LessonExpansionCatalog.lessons
 
     fun byId(id: Int): Lesson? = lessons.firstOrNull { it.id == id }
 }
