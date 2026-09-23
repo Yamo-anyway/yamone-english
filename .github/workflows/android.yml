@@ -22,6 +22,9 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Run catalog integrity tests
+        run: gradle :app:testDebugUnitTest --stacktrace
+
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
 
