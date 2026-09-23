@@ -46,19 +46,23 @@ private data class ReviewChunk(
 @Composable
 fun UnifiedReviewScreen(
     modifier: Modifier = Modifier,
+    course: CourseLevel,
     reviewItems: List<UnifiedReviewItem>,
     isListening: Boolean,
     speak: (String) -> Unit,
     listen: ((String) -> Unit) -> Unit,
     onResult: (Int, ReviewKind, Boolean) -> Unit
 ) {
-    val dueItems = reviewItems.filter { it.isDue }
-    val laterItems = reviewItems.filterNot { it.isDue }
-
-    var selectedLessonId by rememberSaveable(reviewItems) {
-        mutableIntStateOf(dueItems.firstOrNull()?.lessonId ?: reviewItems.firstOrNull()?.lessonId ?: 0)
+    val courseReviewItems = reviewItems.filter {
+        LessonCatalog.byId(it.lessonId)?.course == course
     }
-    val selectedItem = reviewItems.firstOrNull { it.lessonId == selectedLessonId }
+    val dueItems = courseReviewItems.filter { it.isDue }
+    val laterItems = courseReviewItems.filterNot { it.isDue }
+
+    var selectedLessonId by rememberSaveable(course.name, courseReviewItems) {
+        mutableIntStateOf(dueItems.firstOrNull()?.lessonId ?: courseReviewItems.firstOrNull()?.lessonId ?: 0)
+    }
+    val selectedItem = courseReviewItems.firstOrNull { it.lessonId == selectedLessonId }
     val lesson = LessonCatalog.byId(selectedLessonId)
 
     var selectedKindName by rememberSaveable(selectedLessonId) {
@@ -83,7 +87,7 @@ fun UnifiedReviewScreen(
             )
         }
 
-        if (reviewItems.isEmpty()) {
+        if (courseReviewItems.isEmpty()) {
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(24.dp)) {
@@ -97,7 +101,7 @@ fun UnifiedReviewScreen(
             item {
                 Text("복습 문장", fontSize = 21.sp, fontWeight = FontWeight.Bold)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(reviewItems, key = { it.lessonId }) { item ->
+                    items(courseReviewItems, key = { it.lessonId }) { item ->
                         val lessonItem = LessonCatalog.byId(item.lessonId)
                         FilterChip(
                             selected = item.lessonId == selectedLessonId,
@@ -108,7 +112,8 @@ fun UnifiedReviewScreen(
                             },
                             label = {
                                 Text(
-                                    item.lessonId.toString() +
+                                    (LessonCatalog.byId(item.lessonId)?.courseLessonNumber
+                                    ?: item.lessonId).toString() +
                                         if (item.isDue) " · 지금" else " · 예정"
                                 )
                             }
@@ -130,7 +135,7 @@ fun UnifiedReviewScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                lesson.emoji + " " + lesson.id + ". " + lesson.title,
+                                lesson.emoji + " " + lesson.courseLessonNumber + ". " + lesson.title,
                                 fontSize = 21.sp,
                                 fontWeight = FontWeight.Bold
                             )
