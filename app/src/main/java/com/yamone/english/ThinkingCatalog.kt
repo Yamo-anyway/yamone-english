@@ -59,7 +59,9 @@ object ThinkingCatalog {
         ThinkingGuide(50, "비가 → 오고 있어")
     )
 
+    private val allGuides = guides + ThinkingExpansionCatalog.guides
+
     fun byLessonId(id: Int): ThinkingGuide =
-        guides.firstOrNull { it.lessonId == id }
+        allGuides.firstOrNull { it.lessonId == id }
             ?: ThinkingGuide(id, LessonCatalog.byId(id)?.meaning.orEmpty())
 }
