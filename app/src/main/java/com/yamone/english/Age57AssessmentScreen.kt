@@ -268,7 +268,7 @@ private fun AssessmentListeningQuestion(
             choices.forEach { choice ->
                 OutlinedButton(
                     onClick = { onAnswer(choice == lesson.meaning) },
-                    enabled = !answered,
+                    enabled = !answered && !isListening,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(choice)
@@ -305,7 +305,7 @@ private fun AssessmentSpeakingQuestion(
                         onAnswer(score >= 75)
                     }
                 },
-                enabled = !answered,
+                enabled = !answered && !isListening,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Default.Mic, contentDescription = null)
@@ -350,7 +350,7 @@ private fun AssessmentOrderQuestion(
                     FilterChip(
                         selected = false,
                         onClick = { selectedIds = selectedIds + chunk.id },
-                        enabled = !answered,
+                        enabled = !answered && !isListening,
                         label = { Text(chunk.text) }
                     )
                 }
@@ -410,7 +410,7 @@ private fun AssessmentSituationQuestion(
                         onAnswer(score >= 70)
                     }
                 },
-                enabled = !answered,
+                enabled = !answered && !isListening,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Default.Mic, contentDescription = null)
