@@ -155,6 +155,17 @@ private class StudyStore(context: Context) {
 
     fun showSoundGuide(): Boolean = prefs.getBoolean("show_sound_guide", true)
     fun setShowSoundGuide(value: Boolean) = prefs.edit().putBoolean("show_sound_guide", value).apply()
+
+    fun selectedCourse(): CourseLevel =
+        runCatching {
+            CourseLevel.valueOf(
+                prefs.getString("selected_course", CourseLevel.AGE_5_7.name)
+                    ?: CourseLevel.AGE_5_7.name
+            )
+        }.getOrDefault(CourseLevel.AGE_5_7)
+
+    fun setSelectedCourse(value: CourseLevel) =
+        prefs.edit().putString("selected_course", value.name).apply()
 }
 
 @Composable
@@ -170,6 +181,7 @@ private fun YamoneEnglishApp() {
     val scope = rememberCoroutineScope()
 
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
+    var selectedCourse by rememberSaveable { mutableStateOf(store.selectedCourse()) }
     var selectedLesson by remember { mutableStateOf<Lesson?>(null) }
     var showAssessment by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -324,7 +336,13 @@ private fun YamoneEnglishApp() {
                 reviewIds = store.reviewIds()
             },
             onOpenNext = { id ->
-                selectedLesson = LessonCatalog.lessons.firstOrNull { it.id > id }
+                val current = LessonCatalog.byId(id)
+                selectedLesson = if (current == null) {
+                    null
+                } else {
+                    CourseCatalog.lessons(current.course)
+                        .firstOrNull { it.courseLessonNumber > current.courseLessonNumber }
+                }
             }
         )
         return
@@ -359,11 +377,18 @@ private fun YamoneEnglishApp() {
         when (AppTab.entries[tabIndex]) {
             AppTab.TODAY -> TodayScreen(
                 modifier = Modifier.padding(padding),
+                course = selectedCourse,
                 completed = completed,
-                thinkingCompletedCount = thinkingCompleted.size,
+                thinkingCompleted = thinkingCompleted,
                 expressionCompletedCount = expressionCompleted.size,
-                reviewDueCount = unifiedReviewItems.count { it.isDue },
+                reviewDueCount = unifiedReviewItems.count {
+                    it.isDue && LessonCatalog.byId(it.lessonId)?.course == selectedCourse
+                },
                 latestAssessment = latestAssessment,
+                onCourseChange = { course ->
+                    selectedCourse = course
+                    store.setSelectedCourse(course)
+                },
                 onOpenLesson = { selectedLesson = it },
                 onOpenAssessment = { showAssessment = true },
                 onOpenListening = { tabIndex = AppTab.LISTEN.ordinal },
@@ -374,6 +399,7 @@ private fun YamoneEnglishApp() {
             )
             AppTab.LISTEN -> EnhancedListenScreen(
                 modifier = Modifier.padding(padding),
+                course = selectedCourse,
                 player = listeningPlayer,
                 speechRate = speechRate,
                 onMessage = { message ->
@@ -387,6 +413,7 @@ private fun YamoneEnglishApp() {
             )
             AppTab.THINK -> ThinkingTrainingScreen(
                 modifier = Modifier.padding(padding),
+                course = selectedCourse,
                 completedIds = thinkingCompleted,
                 isListening = isListening,
                 speak = { tts.speak(it, speechRate) },
@@ -420,6 +447,7 @@ private fun YamoneEnglishApp() {
             )
             AppTab.REVIEW -> UnifiedReviewScreen(
                 modifier = Modifier.padding(padding),
+                course = selectedCourse,
                 reviewItems = unifiedReviewItems,
                 isListening = isListening,
                 speak = { tts.speak(it, speechRate) },
@@ -437,11 +465,13 @@ private fun YamoneEnglishApp() {
 @Composable
 private fun TodayScreen(
     modifier: Modifier = Modifier,
+    course: CourseLevel,
     completed: Set<Int>,
-    thinkingCompletedCount: Int,
+    thinkingCompleted: Set<Int>,
     expressionCompletedCount: Int,
     reviewDueCount: Int,
     latestAssessment: AssessmentSummary?,
+    onCourseChange: (CourseLevel) -> Unit,
     onOpenLesson: (Lesson) -> Unit,
     onOpenAssessment: () -> Unit,
     onOpenListening: () -> Unit,
@@ -450,12 +480,17 @@ private fun TodayScreen(
     onOpenReview: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
-    val total = LessonCatalog.lessons.size
-    val next = LessonCatalog.lessons.firstOrNull { it.id !in completed } ?: LessonCatalog.lessons.last()
-    var sectionIndex by rememberSaveable(completed.size) {
-        mutableIntStateOf(Age57CourseSections.indexForLesson(next.id))
+    val courseLessons = CourseCatalog.lessons(course)
+    val courseIds = courseLessons.map { it.id }.toSet()
+    val completedInCourse = completed.intersect(courseIds)
+    val thinkingCompletedInCourse = thinkingCompleted.intersect(courseIds)
+    val total = courseLessons.size
+    val next = courseLessons.firstOrNull { it.id !in completedInCourse } ?: courseLessons.last()
+    val courseSections = CourseCatalog.sections(course)
+    var sectionIndex by rememberSaveable(course.name, completedInCourse.size) {
+        mutableIntStateOf(CourseCatalog.sectionIndexForLesson(course, next.id))
     }
-    val selectedSection = Age57CourseSections.sections[sectionIndex]
+    val selectedSection = courseSections[sectionIndex]
     val sectionLessons = selectedSection.lessons()
 
     LazyColumn(
@@ -471,7 +506,22 @@ private fun TodayScreen(
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(Modifier.height(18.dp))
-            Text("첫 과정 · 영어권 5~7세 일상 회화", fontWeight = FontWeight.Bold)
+            Text("과정 선택", fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(CourseLevel.entries) { item ->
+                    FilterChip(
+                        selected = course == item,
+                        onClick = { onCourseChange(item) },
+                        label = { Text(item.label) }
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "영어권 " + course.label + " 회화 · " + course.description,
+                fontWeight = FontWeight.Bold
+            )
             Text(total.toString() + "개 표현을 듣고, 이해하고, 직접 말합니다.")
             Spacer(Modifier.height(12.dp))
             LinearProgressIndicator(
@@ -483,7 +533,7 @@ private fun TodayScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(completed.size.toString() + " / " + total + " 완료")
+                Text(completedInCourse.size.toString() + " / " + total + " 완료")
                 TextButton(onClick = onOpenSettings) {
                     Icon(Icons.Default.Settings, contentDescription = null)
                     Spacer(Modifier.size(4.dp))
@@ -521,8 +571,8 @@ private fun TodayScreen(
                 ) {
                     Text("오늘 할 일", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Text(
-                        "레슨 " + completed.size + "/" + total +
-                            " · 어순 " + thinkingCompletedCount + "/" + total +
+                        "레슨 " + completedInCourse.size + "/" + total +
+                            " · 어순 " + thinkingCompletedInCourse.size + "/" + total +
                             " · 내 표현 " + expressionCompletedCount + "/" +
                             NaturalExpressionCatalog.expressions.size,
                         fontSize = 13.sp
@@ -561,25 +611,39 @@ private fun TodayScreen(
             }
         }
 
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                onClick = onOpenAssessment,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(Modifier.padding(18.dp)) {
-                    Text("5~7세 과정 테스트", fontWeight = FontWeight.Bold)
-                    Text("듣기 · 말하기 · 어순 · 상황 대응 16문항")
-                    Spacer(Modifier.height(8.dp))
-                    if (latestAssessment == null) {
-                        Text("100개 레슨을 마친 뒤 실력을 확인해보세요.")
-                    } else {
-                        Text(
-                            "최근 결과 " + latestAssessment.totalCorrect + " / " +
-                                latestAssessment.totalQuestions + " · " + latestAssessment.overallLabel,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
+        if (course == CourseLevel.AGE_5_7) {
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    onClick = onOpenAssessment,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(18.dp)) {
+                        Text("5~7세 과정 테스트", fontWeight = FontWeight.Bold)
+                        Text("듣기 · 말하기 · 어순 · 상황 대응 16문항")
+                        Spacer(Modifier.height(8.dp))
+                        if (latestAssessment == null) {
+                            Text("100개 레슨을 마친 뒤 실력을 확인해보세요.")
+                        } else {
+                            Text(
+                                "최근 결과 " + latestAssessment.totalCorrect + " / " +
+                                    latestAssessment.totalQuestions + " · " + latestAssessment.overallLabel,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(18.dp)) {
+                        Text("8~10세 과정 · 1차", fontWeight = FontWeight.Bold)
+                        Text("현재 50개 레슨부터 시작합니다. 다음 단계에서 100개까지 확장합니다.")
                     }
                 }
             }
@@ -590,8 +654,8 @@ private fun TodayScreen(
             Text("레슨 찾기", fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(Age57CourseSections.sections, key = { it.id }) { section ->
-                    val index = Age57CourseSections.sections.indexOf(section)
+                items(courseSections, key = { it.id }) { section ->
+                    val index = courseSections.indexOf(section)
                     FilterChip(
                         selected = sectionIndex == index,
                         onClick = { sectionIndex = index },
@@ -606,7 +670,7 @@ private fun TodayScreen(
         items(sectionLessons, key = { it.id }) { lesson ->
             LessonCard(
                 lesson = lesson,
-                completed = lesson.id in completed,
+                completed = lesson.id in completedInCourse,
                 onClick = { onOpenLesson(lesson) }
             )
         }
@@ -623,7 +687,10 @@ private fun LessonCard(lesson: Lesson, completed: Boolean, onClick: () -> Unit) 
         ) {
             Text(lesson.emoji, fontSize = 28.sp)
             Column(Modifier.weight(1f)) {
-                Text(lesson.id.toString() + ". " + lesson.title, fontWeight = FontWeight.Bold)
+                Text(
+                    lesson.courseLessonNumber.toString() + ". " + lesson.title,
+                    fontWeight = FontWeight.Bold
+                )
                 Text(lesson.target)
             }
             Text(if (completed) "완료" else "학습", color = MaterialTheme.colorScheme.primary)
