@@ -1263,7 +1263,12 @@ private fun SettingsScreen(
 
         Text("듣기 속도", fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(0.7f to "천천히", 0.85f to "학습", 1.0f to "자연스럽게").forEach { pair ->
+            listOf(
+                0.7f to "천천히",
+                0.85f to "학습",
+                1.0f to "자연스럽게",
+                1.12f to "실제 빠름"
+            ).forEach { pair ->
                 val rate = pair.first
                 val label = pair.second
                 FilterChip(
