@@ -415,7 +415,8 @@ object DialogueCatalog {
         ))
     )
 
-    val dialogues: List<LessonDialogue> = baseDialogues + DialogueExpansionCatalog.dialogues
+    val dialogues: List<LessonDialogue> =
+        baseDialogues + DialogueExpansionCatalog.dialogues + Age810DialogueCatalog.dialogues
 
     fun byLessonId(id: Int): LessonDialogue? = dialogues.firstOrNull { it.lessonId == id }
 }
