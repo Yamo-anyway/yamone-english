@@ -340,6 +340,8 @@ private fun YamoneEnglishApp() {
                 },
                 onBack = { showAssessment = false }
             )
+
+            CourseLevel.AGE_14_16 -> Unit
         }
         return
     }
@@ -725,6 +727,22 @@ private fun TodayScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                             }
+                        }
+                    }
+                }
+            }
+
+            CourseLevel.AGE_14_16 -> {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(Modifier.padding(18.dp)) {
+                            Text("14~16세 과정 · 1차", fontWeight = FontWeight.Bold)
+                            Text("현재 50개 레슨으로 시작합니다.")
+                            Spacer(Modifier.height(8.dp))
+                            Text("의견·뉘앙스 · 선택·설득 · 관계·경계 · 학업·독립 · 사회·미디어·자기표현")
                         }
                     }
                 }
@@ -1495,7 +1513,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.3.2")
+        Text("Yamone English v0.4.0")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
     }
