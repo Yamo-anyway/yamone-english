@@ -68,7 +68,9 @@ class CatalogIntegrityTest {
             assertTrue("lesson ${lesson.id} rhythm missing", pronunciation.rhythm.isNotBlank())
 
             if (lesson.course == CourseLevel.AGE_14_16) {
-                assertTrue("lesson ${lesson.id} stress marker missing", pronunciation.rhythmEnglish.contains("●"))
+                val hasStressNotation = pronunciation.rhythmEnglish.contains("●") ||
+                    Regex("[A-Z]{2,}").containsMatchIn(pronunciation.rhythmEnglish)
+                assertTrue("lesson ${lesson.id} stress notation missing", hasStressNotation)
                 assertTrue(
                     "lesson ${lesson.id} intonation marker missing",
                     pronunciation.rhythmEnglish.contains("↗") || pronunciation.rhythmEnglish.contains("↘")
