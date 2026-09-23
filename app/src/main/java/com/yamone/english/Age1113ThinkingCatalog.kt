@@ -1,7 +1,7 @@
 package com.yamone.english
 
 object Age1113ThinkingCatalog {
-    val guides = listOf(
+    private val baseGuides = listOf(
         ThinkingGuide(301, "나는 → 생각하지 않아 → 그것이 핵심이라고"),
         ThinkingGuide(302, "해줄 수 있어 → 너가 주는 것을 → 나에게 → 예를 하나?"),
         ThinkingGuide(303, "나는 → 봐 → 그것을 → 조금 다르게"),
@@ -53,4 +53,7 @@ object Age1113ThinkingCatalog {
         ThinkingGuide(349, "나는 → 아직 아니야 → 내가 원하는 곳에"),
         ThinkingGuide(350, "나는 → 자랑스러워 → 내가 여기까지 온 것이")
     )
+
+    val guides: List<ThinkingGuide> =
+        baseGuides + Age1113ThinkingExpansionCatalog.guides
 }
