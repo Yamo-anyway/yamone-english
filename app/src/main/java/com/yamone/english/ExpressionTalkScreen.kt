@@ -288,7 +288,6 @@ private fun NaturalExpressionTrainingContent(
         }
 
         NaturalExpressionCatalog.byCategory(category)
-            .take(12)
             .forEach { expression ->
                 Card(
                     onClick = {
