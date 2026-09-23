@@ -125,6 +125,9 @@ private class StudyStore(context: Context) {
 
     fun showKorean(): Boolean = prefs.getBoolean("show_korean", true)
     fun setShowKorean(value: Boolean) = prefs.edit().putBoolean("show_korean", value).apply()
+
+    fun showSoundGuide(): Boolean = prefs.getBoolean("show_sound_guide", true)
+    fun setShowSoundGuide(value: Boolean) = prefs.edit().putBoolean("show_sound_guide", value).apply()
 }
 
 @Composable
@@ -142,6 +145,7 @@ private fun YamoneEnglishApp() {
     var reviewIds by remember { mutableStateOf(store.reviewIds()) }
     var speechRate by remember { mutableFloatStateOf(store.speechRate()) }
     var showKorean by remember { mutableStateOf(store.showKorean()) }
+    var showSoundGuide by remember { mutableStateOf(store.showSoundGuide()) }
     var isListening by remember { mutableStateOf(false) }
     var micGranted by remember {
         mutableStateOf(
@@ -195,6 +199,7 @@ private fun YamoneEnglishApp() {
         LessonScreen(
             lesson = selectedLesson!!,
             showKorean = showKorean,
+            showSoundGuide = showSoundGuide,
             isListening = isListening,
             speak = { tts.speak(it, speechRate) },
             listen = startListening,
@@ -263,6 +268,7 @@ private fun YamoneEnglishApp() {
                 modifier = Modifier.padding(padding),
                 speechRate = speechRate,
                 showKorean = showKorean,
+                showSoundGuide = showSoundGuide,
                 onSpeechRateChange = {
                     speechRate = it
                     store.setSpeechRate(it)
@@ -270,6 +276,10 @@ private fun YamoneEnglishApp() {
                 onShowKoreanChange = {
                     showKorean = it
                     store.setShowKorean(it)
+                },
+                onShowSoundGuideChange = {
+                    showSoundGuide = it
+                    store.setShowSoundGuide(it)
                 }
             )
         }
@@ -371,6 +381,7 @@ private fun LessonCard(lesson: Lesson, completed: Boolean, onClick: () -> Unit) 
 private fun LessonScreen(
     lesson: Lesson,
     showKorean: Boolean,
+    showSoundGuide: Boolean,
     isListening: Boolean,
     speak: (String) -> Unit,
     listen: ((String) -> Unit) -> Unit,
@@ -440,6 +451,7 @@ private fun LessonScreen(
 
                 1 -> {
                     PhraseCard(lesson.target, if (showKorean) lesson.meaning else null)
+                    if (showSoundGuide) PronunciationGuideCard(lesson)
                     InfoCard("상황", lesson.situation)
                     InfoCard("이어지는 소리", lesson.connectedNote)
                     Button(onClick = { speak(lesson.target) }, modifier = Modifier.fillMaxWidth()) {
@@ -449,6 +461,7 @@ private fun LessonScreen(
 
                 2 -> {
                     PhraseCard(lesson.target, if (showKorean) lesson.meaning else null)
+                    if (showSoundGuide) PronunciationGuideCard(lesson)
                     BigGuide("이제 그대로 말해보세요.", "문장 전체를 한 호흡으로 말하는 데 집중합니다.")
                     Button(
                         onClick = {
@@ -616,6 +629,25 @@ private fun PhraseCard(english: String, korean: String?) {
 }
 
 @Composable
+private fun PronunciationGuideCard(lesson: Lesson) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Text("소리 가이드", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+            Text(lesson.soundEnglish, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text(lesson.soundKorean, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            Text("● 강세  ·  ‿ 붙여 읽기  ·  | 짧은 쉼  ·  ↗ 올림  ·  ↘ 내림", fontSize = 12.sp)
+            Text("한글 표기는 실제 영어 소리를 익히기 위한 보조 표시입니다. 반드시 음성과 함께 들어보세요.", fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
 private fun InfoCard(label: String, text: String) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
@@ -746,8 +778,10 @@ private fun SettingsScreen(
     modifier: Modifier = Modifier,
     speechRate: Float,
     showKorean: Boolean,
+    showSoundGuide: Boolean,
     onSpeechRateChange: (Float) -> Unit,
-    onShowKoreanChange: (Boolean) -> Unit
+    onShowKoreanChange: (Boolean) -> Unit,
+    onShowSoundGuideChange: (Boolean) -> Unit
 ) {
     Column(
         modifier = modifier
@@ -782,6 +816,17 @@ private fun SettingsScreen(
             Switch(checked = showKorean, onCheckedChange = onShowKoreanChange)
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("한글 발음·리듬 가이드", fontWeight = FontWeight.Bold)
+                Text("강세, 붙여읽기, 높낮이와 한국어식 소리 표시")
+            }
+            Switch(checked = showSoundGuide, onCheckedChange = onShowSoundGuideChange)
+        }
+
         HorizontalDivider()
         Text("추후 활성화 준비", fontWeight = FontWeight.Bold)
         FutureFeatureRow("로그인 / 기기 동기화", FeatureFlags.AUTH_ENABLED)
@@ -790,7 +835,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.1.0")
+        Text("Yamone English v0.1.1")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
 }
