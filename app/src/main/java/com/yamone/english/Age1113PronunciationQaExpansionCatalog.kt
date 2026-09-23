@@ -42,7 +42,7 @@ object Age1113PronunciationQaExpansionCatalog {
         PronunciationQaGuide(388, "It was my CHOICE | so I'll take re-spon-si●BIL-i-ty ↘", "잇 / 워즈 / 마이 / 초이스 / 쏘 / 아일 / 테이크 / 리스판서빌러티", "잇 워즈 마이 ●초이스 | 쏘 아일 테이크 리스판서●빌러리↘", "약-약-약-강 | 약-약-약-강 ↘"),
         PronunciationQaGuide(389, "I'll TRY to work it OUT on my OWN ↘", "아일 / 트라이 / 투 / 워크 / 잇 / 아웃 / 온 / 마이 / 오운", "아일 ●트라이 터 워키다웃 온 마이 ●오운↘", "약-강-약-약-약-강-약-약-강 ↘"),
         PronunciationQaGuide(390, "Knowing WHEN to ask for HELP is important TOO ↘", "노잉 / 웬 / 투 / 애스크 / 포 / 헬프 / 이즈 / 임포턴트 / 투", "노잉 ●웬 터 애스크 퍼 ●헬프 이즈 임포턴트 ●투↘", "약-강-약-약-약-강-약-약-강 ↘"),
-        PronunciationQaGuide(391, "I've been getting ●IN-ter-est-ed in THIS lately ↘", "아이브 / 빈 / 게팅 / 인터레스티드 / 인 / 디스 / 레잇리", "아이브 빈 게링 ●인트러스티드 인 ●디스 레잇리↘", "약-약-약-강-약-강-약 ↘"),
+        PronunciationQaGuide(391, "I've been getting MORE ●IN-ter-est-ed in THIS lately ↘", "아이브 / 빈 / 게팅 / 모어 / 인터레스티드 / 인 / 디스 / 레잇리", "아이브 빈 게링 ●모어 ●인트러스티드 인 ●디스 레잇리↘", "약-약-약-강-강-약-강-약 ↘"),
         PronunciationQaGuide(392, "I WANT to under●STAND why that HAP-pens ↘", "아이 / 원트 / 투 / 언더스탠드 / 와이 / 댓 / 해픈즈", "아이 ●워너 언더●스탠드 와이 댓 ●해픈즈↘", "약-강-약-강-약-약-강 ↘"),
         PronunciationQaGuide(393, "I THINK this is something I'm GOOD at ↘", "아이 / 띵크 / 디스 / 이즈 / 썸띵 / 아임 / 굿 / 앳", "아이 ●띵크 디스 이즈 썸띵 아임 ●구댓↘", "약-강-약-약-약-약-강 ↘"),
         PronunciationQaGuide(394, "This PART still feels ●CHAL-leng-ing ↘", "디스 / 파트 / 스틸 / 필즈 / 챌린징", "디스 ●파트 스틸 필즈 ●챌린징↘", "약-강-약-약-강 ↘"),
