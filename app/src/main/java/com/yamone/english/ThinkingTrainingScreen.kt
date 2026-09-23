@@ -249,7 +249,10 @@ fun ThinkingTrainingScreen(
 
                         if (arrangementCorrect) {
                             Text(lesson.target, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                            Text(SoundGuideCatalog.byLessonId(lesson.id).naturalKorean, fontSize = 17.sp)
+                            Text(
+                                PronunciationQaCatalog.byLessonId(lesson.id).naturalKorean,
+                                fontSize = 17.sp
+                            )
                             Button(
                                 onClick = { speak(lesson.target) },
                                 modifier = Modifier.fillMaxWidth()
