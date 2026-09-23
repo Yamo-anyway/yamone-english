@@ -176,6 +176,7 @@ private fun YamoneEnglishApp() {
     val assessmentStore = remember { AssessmentStore(context) }
     val age810AssessmentStore = remember { Age810AssessmentStore(context) }
     val age1113AssessmentStore = remember { Age1113AssessmentStore(context) }
+    val age1416AssessmentStore = remember { Age1416AssessmentStore(context) }
     val voice = remember { VoiceController(context) }
     val tts = remember { EnglishTts(context) }
     val listeningPlayer = remember { ListeningPlayer(context) }
@@ -190,6 +191,7 @@ private fun YamoneEnglishApp() {
     var latestAssessment by remember { mutableStateOf(assessmentStore.latest()) }
     var latestAge810Assessment by remember { mutableStateOf(age810AssessmentStore.latest()) }
     var latestAge1113Assessment by remember { mutableStateOf(age1113AssessmentStore.latest()) }
+    var latestAge1416Assessment by remember { mutableStateOf(age1416AssessmentStore.latest()) }
     var completed by remember { mutableStateOf(store.completedIds()) }
     var reviewIds by remember { mutableStateOf(store.reviewIds()) }
     var unifiedReviewItems by remember { mutableStateOf(reviewStore.items()) }
@@ -341,7 +343,18 @@ private fun YamoneEnglishApp() {
                 onBack = { showAssessment = false }
             )
 
-            CourseLevel.AGE_14_16 -> Unit
+            CourseLevel.AGE_14_16 -> Age1416AssessmentScreen(
+                isListening = isListening,
+                speak = { tts.speak(it, speechRate) },
+                listen = startListening,
+                onReviewResult = reviewCallback,
+                onFinish = { summary ->
+                    age1416AssessmentStore.save(summary)
+                    latestAge1416Assessment = age1416AssessmentStore.latest()
+                    showAssessment = false
+                },
+                onBack = { showAssessment = false }
+            )
         }
         return
     }
@@ -423,6 +436,7 @@ private fun YamoneEnglishApp() {
                 latestAssessment = latestAssessment,
                 latestAge810Assessment = latestAge810Assessment,
                 latestAge1113Assessment = latestAge1113Assessment,
+                latestAge1416Assessment = latestAge1416Assessment,
                 onCourseChange = { course ->
                     selectedCourse = course
                     store.setSelectedCourse(course)
@@ -511,6 +525,7 @@ private fun TodayScreen(
     latestAssessment: AssessmentSummary?,
     latestAge810Assessment: Age810AssessmentSummary?,
     latestAge1113Assessment: Age1113AssessmentSummary?,
+    latestAge1416Assessment: Age1416AssessmentSummary?,
     onCourseChange: (CourseLevel) -> Unit,
     onOpenLesson: (Lesson) -> Unit,
     onOpenAssessment: () -> Unit,
@@ -565,7 +580,7 @@ private fun TodayScreen(
             Text(total.toString() + "개 표현을 듣고, 이해하고, 직접 말합니다.")
             Spacer(Modifier.height(12.dp))
             LinearProgressIndicator(
-                progress = completed.size.toFloat() / total.toFloat(),
+                progress = completedInCourse.size.toFloat() / total.coerceAtLeast(1).toFloat(),
                 modifier = Modifier.fillMaxWidth()
             )
             Row(
@@ -592,7 +607,7 @@ private fun TodayScreen(
                     Text("이어서 학습", fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        next.emoji + " " + next.id + ". " + next.title,
+                        next.emoji + " " + next.courseLessonNumber + ". " + next.title,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -736,13 +751,24 @@ private fun TodayScreen(
                 item {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                        onClick = onOpenAssessment,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(Modifier.padding(18.dp)) {
-                            Text("14~16세 과정 · 1차", fontWeight = FontWeight.Bold)
-                            Text("현재 50개 레슨으로 시작합니다.")
+                            Text("14~16세 과정 테스트", fontWeight = FontWeight.Bold)
+                            Text("듣기 · 말하기 · 어순 · 상황·판단 28문항")
                             Spacer(Modifier.height(8.dp))
-                            Text("의견·뉘앙스 · 선택·설득 · 관계·경계 · 학업·독립 · 사회·미디어·자기표현")
+                            if (latestAge1416Assessment == null) {
+                                Text("100개 레슨을 마친 뒤 실력을 확인해보세요.")
+                            } else {
+                                Text(
+                                    "최근 결과 " + latestAge1416Assessment.totalCorrect + " / " +
+                                        latestAge1416Assessment.totalQuestions + " · " +
+                                        latestAge1416Assessment.overallLabel,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -818,6 +844,8 @@ private fun LessonScreen(
     var matchScore by remember { mutableIntStateOf(-1) }
     var coachReply by remember { mutableStateOf("") }
     val lessonScrollState = rememberScrollState()
+    val hasNextLesson = CourseCatalog.lessons(lesson.course)
+        .any { it.courseLessonNumber > lesson.courseLessonNumber }
 
     LaunchedEffect(stage, lesson.id) {
         lessonScrollState.scrollTo(0)
@@ -985,12 +1013,12 @@ private fun LessonScreen(
                     Text("이 표현은 완료 처리됐습니다. 나중에 다른 대화 속에서 다시 만나게 됩니다.")
                     Button(
                         onClick = {
-                            if (lesson.id < LessonCatalog.lessons.size) onOpenNext(lesson.id)
+                            if (hasNextLesson) onOpenNext(lesson.id)
                             else onBack()
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(if (lesson.id < LessonCatalog.lessons.size) "다음 레슨" else "홈으로")
+                        Text(if (hasNextLesson) "다음 레슨" else "홈으로")
                     }
                     OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
                         Text("홈으로")
@@ -1513,7 +1541,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.4.0")
+        Text("Yamone English v0.5.1")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
     }
