@@ -16,7 +16,7 @@ data class Lesson(
 )
 
 object LessonCatalog {
-    val lessons = listOf(
+    private val baseLessons = listOf(
         Lesson(1, "안녕, 나는...", "👋", "처음 만났을 때", "Hi, I'm Mina.", "안녕, 나는 미나야.", "●HI | I'm ●MI-na ↘", "●하이 | 아임 ●미나↘", "쉼표에서 아주 짧게 쉬고, Hi와 이름에 힘을 주세요.", "안녕, 나는 야모야.", listOf("Hi, I'm Yamo.", "Hello, I'm Yamo."), "Hi! What's your name?"),
         Lesson(2, "잘 지냈어?", "🙂", "친구를 만났을 때", "How are you?", "어떻게 지내?", "●HOW‿are‿you ↗", "●하워유↗", "How are you?를 세 단어로 끊지 말고 한 덩어리처럼 들어보세요.", "나 괜찮아.", listOf("I'm good.", "I'm fine."), "How are you today?"),
         Lesson(3, "나 좋아해", "❤️", "좋아하는 것을 말할 때", "I like this.", "나 이거 좋아해.", "I ●LIKE this ↘", "아이 ●라익 디스↘", "like에 힘을 주고 뒤 표현은 조금 가볍게 이어보세요.", "나는 커피를 좋아해.", listOf("I like coffee.", "I love coffee."), "What do you like?"),
@@ -68,6 +68,8 @@ object LessonCatalog {
         Lesson(49, "몸이 안 좋아", "🤒", "아플 때", "I don't feel good.", "몸이 안 좋아.", "I don't feel ●GOOD ↘", "아이 돈 필 ●굿↘", "feel good을 한 덩어리로 말해보세요.", "배가 아파.", listOf("My stomach hurts.", "I don't feel good."), "What's wrong?"),
         Lesson(50, "비가 와", "🌧️", "날씨를 말할 때", "It's raining.", "비가 와.", "It's ●RAIN-ing ↘", "잇츠 ●레이닝↘", "raining의 첫 음절에 힘을 주세요.", "밖에 비가 와.", listOf("It's raining outside.", "It's raining."), "Is it raining outside?")
     )
+
+    val lessons: List<Lesson> = baseLessons + LessonExpansionCatalog.lessons
 
     fun byId(id: Int): Lesson? = lessons.firstOrNull { it.id == id }
 }
