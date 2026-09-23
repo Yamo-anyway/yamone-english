@@ -91,6 +91,7 @@ class MainActivity : ComponentActivity() {
 
 private enum class AppTab(val label: String) {
     TODAY("오늘"),
+    LISTEN("듣기"),
     TALK("대화"),
     REVIEW("복습"),
     SETTINGS("설정")
@@ -136,6 +137,7 @@ private fun YamoneEnglishApp() {
     val store = remember { StudyStore(context) }
     val voice = remember { VoiceController(context) }
     val tts = remember { EnglishTts(context) }
+    val listeningPlayer = remember { ListeningPlayer(context) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -192,6 +194,7 @@ private fun YamoneEnglishApp() {
         onDispose {
             voice.destroy()
             tts.shutdown()
+            listeningPlayer.shutdown()
         }
     }
 
@@ -233,6 +236,7 @@ private fun YamoneEnglishApp() {
                             Icon(
                                 imageVector = when (tab) {
                                     AppTab.TODAY -> Icons.Default.Home
+                                    AppTab.LISTEN -> Icons.Default.VolumeUp
                                     AppTab.TALK -> Icons.Default.Mic
                                     AppTab.REVIEW -> Icons.Default.Refresh
                                     AppTab.SETTINGS -> Icons.Default.Settings
@@ -251,6 +255,14 @@ private fun YamoneEnglishApp() {
                 modifier = Modifier.padding(padding),
                 completed = completed,
                 onOpenLesson = { selectedLesson = it }
+            )
+            AppTab.LISTEN -> ListenScreen(
+                modifier = Modifier.padding(padding),
+                player = listeningPlayer,
+                speechRate = speechRate,
+                onMessage = { message ->
+                    scope.launch { snackbarHostState.showSnackbar(message) }
+                }
             )
             AppTab.TALK -> FreeTalkScreen(
                 modifier = Modifier.padding(padding),
@@ -515,6 +527,7 @@ private fun LessonScreen(
 
                 4 -> {
                     BigGuide("외운 문장으로 끝내지 않고 대화를 이어갑니다.", null)
+                    DialoguePreviewCard(lesson)
                     InfoCard("상대", lesson.coachLine)
                     Button(
                         onClick = { speak(lesson.coachLine) },
@@ -654,6 +667,221 @@ private fun InfoCard(label: String, text: String) {
             Text(label, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(4.dp))
             Text(text, fontSize = 17.sp)
+        }
+    }
+}
+
+@Composable
+private fun DialoguePreviewCard(lesson: Lesson) {
+    val dialogue = DialogueCatalog.byLessonId(lesson.id) ?: return
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            Text("이 레슨의 실제 대화", fontWeight = FontWeight.Bold)
+            dialogue.lines.forEach { line ->
+                Text(line.speaker + "  " + line.english, fontWeight = FontWeight.SemiBold)
+                Text("    " + line.korean, fontSize = 14.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ListenScreen(
+    modifier: Modifier = Modifier,
+    player: ListeningPlayer,
+    speechRate: Float,
+    onMessage: (String) -> Unit
+) {
+    var modeIndex by rememberSaveable { mutableIntStateOf(0) }
+    var selectedLessonId by rememberSaveable { mutableIntStateOf(1) }
+    var isPlaying by remember { mutableStateOf(false) }
+    var playingAll by remember { mutableStateOf(false) }
+    var currentIndex by remember { mutableIntStateOf(-1) }
+    var currentSegment by remember { mutableStateOf<ListeningSegment?>(null) }
+
+    val mode = ListenMode.entries[modeIndex]
+    val selectedLesson = LessonCatalog.byId(selectedLessonId) ?: LessonCatalog.lessons.first()
+
+    fun start(segments: List<ListeningSegment>, all: Boolean) {
+        isPlaying = true
+        playingAll = all
+        currentIndex = -1
+        currentSegment = null
+        player.play(
+            newSegments = segments,
+            rate = speechRate,
+            onSegmentChanged = { index, segment ->
+                currentIndex = index
+                currentSegment = segment
+            },
+            onComplete = {
+                isPlaying = false
+                playingAll = false
+                onMessage("연속 듣기가 끝났습니다.")
+            },
+            onError = { message ->
+                isPlaying = false
+                playingAll = false
+                onMessage(message)
+            }
+        )
+    }
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Text("연속 듣기", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            Text("화면을 조작하지 않아도 핵심 표현과 대화를 차례로 들을 수 있습니다.")
+        }
+
+        item {
+            Text("듣기 방식", fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            ListenMode.entries.forEachIndexed { index, item ->
+                FilterChip(
+                    selected = modeIndex == index,
+                    onClick = {
+                        if (isPlaying) player.stop()
+                        isPlaying = false
+                        playingAll = false
+                        modeIndex = index
+                    },
+                    label = { Text(item.label) },
+                    modifier = Modifier.padding(end = 6.dp)
+                )
+            }
+        }
+
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("선택 레슨", fontWeight = FontWeight.Bold)
+                    Text(
+                        selectedLesson.emoji + " " + selectedLesson.id + ". " + selectedLesson.title,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(selectedLesson.target)
+                    Spacer(Modifier.height(10.dp))
+                    Button(
+                        onClick = {
+                            start(
+                                ListeningPlaylistBuilder.lesson(selectedLesson, mode),
+                                false
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("이 레슨 전체 듣기")
+                    }
+                }
+            }
+        }
+
+        item {
+            Button(
+                onClick = { start(ListeningPlaylistBuilder.all(mode), true) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.VolumeUp, contentDescription = null)
+                Spacer(Modifier.size(8.dp))
+                Text("24개 레슨 전체 연속 듣기")
+            }
+        }
+
+        if (isPlaying) {
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            if (playingAll) "전체 연속 재생 중" else "레슨 연속 재생 중",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        currentSegment?.let { segment ->
+                            val lesson = LessonCatalog.byId(segment.lessonId)
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                (lesson?.emoji ?: "") + " " + segment.lessonId + ". " + (lesson?.title ?: ""),
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                (segment.speaker?.let { it + " · " } ?: "") + segment.part,
+                                fontSize = 13.sp
+                            )
+                            Text(segment.text, fontSize = 21.sp, fontWeight = FontWeight.SemiBold)
+                            if (currentIndex >= 0) {
+                                Text("재생 항목 " + (currentIndex + 1), fontSize = 12.sp)
+                            }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedButton(
+                            onClick = {
+                                player.stop()
+                                isPlaying = false
+                                playingAll = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("정지")
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            HorizontalDivider()
+            Text("레슨 선택", fontSize = 21.sp, fontWeight = FontWeight.Bold)
+        }
+
+        items(LessonCatalog.lessons, key = { "listen-" + it.id }) { lesson ->
+            Card(
+                onClick = {
+                    if (isPlaying) player.stop()
+                    isPlaying = false
+                    playingAll = false
+                    selectedLessonId = lesson.id
+                },
+                colors = CardDefaults.cardColors(
+                    containerColor = if (selectedLessonId == lesson.id)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surface
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(lesson.emoji, fontSize = 24.sp)
+                    Spacer(Modifier.size(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(lesson.id.toString() + ". " + lesson.title, fontWeight = FontWeight.Bold)
+                        Text(lesson.target)
+                    }
+                    Text(if (selectedLessonId == lesson.id) "선택" else "")
+                }
+            }
+        }
+
+        item {
+            Text(
+                "영어만: 영어 대화만 재생 · 영어→해석: 각 문장 뒤 한국어 · 영어→해석→영어: 뜻을 확인한 뒤 같은 영어를 다시 듣습니다.",
+                fontSize = 12.sp
+            )
         }
     }
 }
@@ -835,7 +1063,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.1.1")
+        Text("Yamone English v0.1.2")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
 }
