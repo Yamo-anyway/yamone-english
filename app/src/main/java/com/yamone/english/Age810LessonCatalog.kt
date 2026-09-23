@@ -1,7 +1,7 @@
 package com.yamone.english
 
 object Age810LessonCatalog {
-    val lessons = listOf(
+    private val baseLessons = listOf(
         Lesson(
             id = 201,
             title = "숙제를 깜빡했어",
@@ -803,4 +803,6 @@ object Age810LessonCatalog {
             courseLessonNumber = 50
         )
     )
+
+    val lessons: List<Lesson> = baseLessons + Age810LessonExpansionCatalog.lessons
 }
