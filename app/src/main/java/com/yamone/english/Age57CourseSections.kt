@@ -3,10 +3,10 @@ package com.yamone.english
 data class CourseSection(
     val id: Int,
     val title: String,
-    val range: IntRange
+    val internalIds: IntRange
 ) {
     fun lessons(): List<Lesson> =
-        LessonCatalog.lessons.filter { it.id in range }
+        LessonCatalog.lessons.filter { it.id in internalIds }
 }
 
 object Age57CourseSections {
@@ -19,5 +19,5 @@ object Age57CourseSections {
     )
 
     fun indexForLesson(lessonId: Int): Int =
-        sections.indexOfFirst { lessonId in it.range }.coerceAtLeast(0)
+        sections.indexOfFirst { lessonId in it.internalIds }.coerceAtLeast(0)
 }
