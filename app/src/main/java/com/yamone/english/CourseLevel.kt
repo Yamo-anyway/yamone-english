@@ -37,7 +37,7 @@ object CourseCatalog {
         CourseLevel.AGE_8_10 -> Age810CourseSections.sections
         CourseLevel.AGE_11_13 -> Age1113CourseSections.sections
         CourseLevel.AGE_14_16 -> Age1416CourseSections.sections
-        CourseLevel.AGE_17_20 -> Age1720CourseSections.sections
+        CourseLevel.AGE_17_20 -> Age1720CourseSections.sections + Age1720CourseSectionExpansionCatalog.sections
     }
 
     fun sectionIndexForLesson(course: CourseLevel, lessonId: Int): Int =
