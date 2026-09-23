@@ -42,13 +42,19 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun EnhancedListenScreen(
     modifier: Modifier = Modifier,
+    course: CourseLevel,
     player: ListeningPlayer,
     speechRate: Float,
     onMessage: (String) -> Unit,
     onReviewResult: (Int, ReviewKind, Boolean) -> Unit
 ) {
-    var selectedLessonId by rememberSaveable { mutableIntStateOf(1) }
-    var sectionIndex by rememberSaveable { mutableIntStateOf(0) }
+    val courseLessons = CourseCatalog.lessons(course)
+    val courseSections = CourseCatalog.sections(course)
+
+    var selectedLessonId by rememberSaveable(course.name) {
+        mutableIntStateOf(courseLessons.first().id)
+    }
+    var sectionIndex by rememberSaveable(course.name) { mutableIntStateOf(0) }
     var listenModeIndex by rememberSaveable { mutableIntStateOf(0) }
     var repeatCount by rememberSaveable { mutableIntStateOf(1) }
     var voiceModeIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -64,8 +70,8 @@ fun EnhancedListenScreen(
     var selectedMeaning by rememberSaveable(selectedLessonId) { mutableStateOf<String?>(null) }
     var showDialogue by rememberSaveable(selectedLessonId) { mutableStateOf(false) }
 
-    val lesson = LessonCatalog.byId(selectedLessonId) ?: LessonCatalog.lessons.first()
-    val selectedSection = Age57CourseSections.sections[sectionIndex]
+    val lesson = LessonCatalog.byId(selectedLessonId) ?: courseLessons.first()
+    val selectedSection = courseSections[sectionIndex]
     val sectionLessons = selectedSection.lessons()
     val dialogue = DialogueCatalog.byLessonId(lesson.id)
     val mode = ListenMode.entries[listenModeIndex]
@@ -144,15 +150,15 @@ fun EnhancedListenScreen(
             Text("레슨", fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(Age57CourseSections.sections, key = { it.id }) { section ->
-                    val index = Age57CourseSections.sections.indexOf(section)
+                items(courseSections, key = { it.id }) { section ->
+                    val index = courseSections.indexOf(section)
                     FilterChip(
                         selected = sectionIndex == index,
                         onClick = {
                             player.stop()
                             isPlaying = false
                             sectionIndex = index
-                            selectedLessonId = section.range.first
+                            selectedLessonId = section.internalIds.first
                         },
                         label = { Text(section.title) }
                     )
@@ -184,7 +190,7 @@ fun EnhancedListenScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        lesson.emoji + " " + lesson.id + ". " + lesson.title,
+                        lesson.emoji + " " + lesson.courseLessonNumber + ". " + lesson.title,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -418,13 +424,13 @@ fun EnhancedListenScreen(
                 onClick = {
                     startPlayback(
                         label = "전체 과정",
-                        segments = ListeningPlaylistBuilder.all(mode),
+                        segments = ListeningPlaylistBuilder.all(mode, courseLessons),
                         rate = drillRate
                     )
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(LessonCatalog.lessons.size.toString() + "개 레슨 전체 연속 듣기")
+                Text(courseLessons.size.toString() + "개 레슨 전체 연속 듣기")
             }
         }
 
@@ -464,8 +470,14 @@ fun EnhancedListenScreen(
                 onClick = {
                     player.stop()
                     isPlaying = false
-                    selectedLessonId = if (selectedLessonId >= LessonCatalog.lessons.size) 1 else selectedLessonId + 1
-                    sectionIndex = Age57CourseSections.indexForLesson(selectedLessonId)
+                    val currentIndex = courseLessons.indexOfFirst { it.id == selectedLessonId }
+                    val nextLesson = if (currentIndex >= courseLessons.lastIndex) {
+                        courseLessons.first()
+                    } else {
+                        courseLessons[currentIndex + 1]
+                    }
+                    selectedLessonId = nextLesson.id
+                    sectionIndex = CourseCatalog.sectionIndexForLesson(course, selectedLessonId)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
