@@ -59,7 +59,11 @@ object ThinkingCatalog {
         ThinkingGuide(50, "비가 → 오고 있어")
     )
 
-    private val allGuides = guides + ThinkingExpansionCatalog.guides + Age810ThinkingCatalog.guides
+    private val allGuides =
+        guides +
+            ThinkingExpansionCatalog.guides +
+            Age810ThinkingCatalog.guides +
+            Age1113ThinkingCatalog.guides
 
     fun byLessonId(id: Int): ThinkingGuide =
         allGuides.firstOrNull { it.lessonId == id }
