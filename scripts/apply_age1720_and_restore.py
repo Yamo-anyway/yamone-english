@@ -1,6 +1,14 @@
 from pathlib import Path
 import runpy
 
+script_path = Path("scripts/apply_age1720.py")
+script_text = script_path.read_text(encoding="utf-8")
+bad = "'Do you know how you're going to handle everything?'"
+good = "\"Do you know how you're going to handle everything?\""
+if bad not in script_text:
+    raise RuntimeError("expected generator quoting pattern not found")
+script_path.write_text(script_text.replace(bad, good, 1), encoding="utf-8")
+
 runpy.run_path("scripts/apply_age1720.py", run_name="__main__")
 
 original_workflow = '''name: Android CI
