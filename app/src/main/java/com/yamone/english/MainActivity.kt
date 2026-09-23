@@ -693,10 +693,10 @@ private fun TodayScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(Modifier.padding(18.dp)) {
-                            Text("11~13세 과정 · 1차", fontWeight = FontWeight.Bold)
-                            Text("현재 50개 레슨으로 시작합니다.")
+                            Text("11~13세 과정", fontWeight = FontWeight.Bold)
+                            Text("100개 레슨으로 구성되어 있습니다. 다음 단계에서 과정 종료 테스트를 추가합니다.")
                             Spacer(Modifier.height(8.dp))
-                            Text("의견·근거 · 계획·협업 · 관계·갈등 · 정보 판단 · 목표·성찰")
+                            Text("의견·근거 · 계획·협업 · 관계·갈등 · 정보 판단 · 목표·성찰 · 주장·반론 · 디지털 소통 · 독립·책임 · 관심 탐색")
                         }
                     }
                 }
@@ -1467,7 +1467,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.3.0")
+        Text("Yamone English v0.3.1")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
     }
