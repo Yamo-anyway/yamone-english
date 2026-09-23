@@ -175,6 +175,7 @@ private fun YamoneEnglishApp() {
     val reviewStore = remember { UnifiedReviewStore(context) }
     val assessmentStore = remember { AssessmentStore(context) }
     val age810AssessmentStore = remember { Age810AssessmentStore(context) }
+    val age1113AssessmentStore = remember { Age1113AssessmentStore(context) }
     val voice = remember { VoiceController(context) }
     val tts = remember { EnglishTts(context) }
     val listeningPlayer = remember { ListeningPlayer(context) }
@@ -188,6 +189,7 @@ private fun YamoneEnglishApp() {
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var latestAssessment by remember { mutableStateOf(assessmentStore.latest()) }
     var latestAge810Assessment by remember { mutableStateOf(age810AssessmentStore.latest()) }
+    var latestAge1113Assessment by remember { mutableStateOf(age1113AssessmentStore.latest()) }
     var completed by remember { mutableStateOf(store.completedIds()) }
     var reviewIds by remember { mutableStateOf(store.reviewIds()) }
     var unifiedReviewItems by remember { mutableStateOf(reviewStore.items()) }
@@ -292,15 +294,15 @@ private fun YamoneEnglishApp() {
         return
     }
 
-    if (showAssessment && selectedCourse != CourseLevel.AGE_11_13) {
+    if (showAssessment) {
         val reviewCallback: (Int, ReviewKind, Boolean) -> Unit = { id, kind, success ->
             if (success) reviewStore.recordSuccess(id, kind)
             else reviewStore.recordError(id, kind)
             unifiedReviewItems = reviewStore.items()
         }
 
-        if (selectedCourse == CourseLevel.AGE_5_7) {
-            Age57AssessmentScreen(
+        when (selectedCourse) {
+            CourseLevel.AGE_5_7 -> Age57AssessmentScreen(
                 isListening = isListening,
                 speak = { tts.speak(it, speechRate) },
                 listen = startListening,
@@ -312,8 +314,8 @@ private fun YamoneEnglishApp() {
                 },
                 onBack = { showAssessment = false }
             )
-        } else {
-            Age810AssessmentScreen(
+
+            CourseLevel.AGE_8_10 -> Age810AssessmentScreen(
                 isListening = isListening,
                 speak = { tts.speak(it, speechRate) },
                 listen = startListening,
@@ -321,6 +323,19 @@ private fun YamoneEnglishApp() {
                 onFinish = { summary ->
                     age810AssessmentStore.save(summary)
                     latestAge810Assessment = age810AssessmentStore.latest()
+                    showAssessment = false
+                },
+                onBack = { showAssessment = false }
+            )
+
+            CourseLevel.AGE_11_13 -> Age1113AssessmentScreen(
+                isListening = isListening,
+                speak = { tts.speak(it, speechRate) },
+                listen = startListening,
+                onReviewResult = reviewCallback,
+                onFinish = { summary ->
+                    age1113AssessmentStore.save(summary)
+                    latestAge1113Assessment = age1113AssessmentStore.latest()
                     showAssessment = false
                 },
                 onBack = { showAssessment = false }
@@ -405,6 +420,7 @@ private fun YamoneEnglishApp() {
                 },
                 latestAssessment = latestAssessment,
                 latestAge810Assessment = latestAge810Assessment,
+                latestAge1113Assessment = latestAge1113Assessment,
                 onCourseChange = { course ->
                     selectedCourse = course
                     store.setSelectedCourse(course)
@@ -492,6 +508,7 @@ private fun TodayScreen(
     reviewDueCount: Int,
     latestAssessment: AssessmentSummary?,
     latestAge810Assessment: Age810AssessmentSummary?,
+    latestAge1113Assessment: Age1113AssessmentSummary?,
     onCourseChange: (CourseLevel) -> Unit,
     onOpenLesson: (Lesson) -> Unit,
     onOpenAssessment: () -> Unit,
@@ -690,13 +707,24 @@ private fun TodayScreen(
                 item {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                        onClick = onOpenAssessment,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(Modifier.padding(18.dp)) {
-                            Text("11~13세 과정", fontWeight = FontWeight.Bold)
-                            Text("100개 레슨으로 구성되어 있습니다. 다음 단계에서 과정 종료 테스트를 추가합니다.")
+                            Text("11~13세 과정 테스트", fontWeight = FontWeight.Bold)
+                            Text("듣기 · 말하기 · 어순 · 상황·판단 24문항")
                             Spacer(Modifier.height(8.dp))
-                            Text("의견·근거 · 계획·협업 · 관계·갈등 · 정보 판단 · 목표·성찰 · 주장·반론 · 디지털 소통 · 독립·책임 · 관심 탐색")
+                            if (latestAge1113Assessment == null) {
+                                Text("100개 레슨을 마친 뒤 실력을 확인해보세요.")
+                            } else {
+                                Text(
+                                    "최근 결과 " + latestAge1113Assessment.totalCorrect + " / " +
+                                        latestAge1113Assessment.totalQuestions + " · " +
+                                        latestAge1113Assessment.overallLabel,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -1467,7 +1495,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.3.1")
+        Text("Yamone English v0.3.2")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
     }
