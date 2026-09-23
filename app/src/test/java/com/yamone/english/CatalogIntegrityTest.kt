@@ -10,19 +10,21 @@ class CatalogIntegrityTest {
         CourseLevel.AGE_5_7 to (1..100),
         CourseLevel.AGE_8_10 to (201..300),
         CourseLevel.AGE_11_13 to (301..400),
-        CourseLevel.AGE_14_16 to (401..500)
+        CourseLevel.AGE_14_16 to (401..500),
+        CourseLevel.AGE_17_20 to (501..550)
     )
 
     @Test
     fun courseLessonIdsAndNumbersRemainStable() {
         val allIds = LessonCatalog.lessons.map { it.id }
         assertEquals("global lesson ids must be unique", allIds.size, allIds.toSet().size)
-        assertEquals("four 100-lesson courses are expected", 400, allIds.size)
+        assertEquals("four 100-lesson courses plus 50 age17-20 lessons are expected", 450, allIds.size)
 
         expectedIdRanges.forEach { (course, idRange) ->
             val lessons = CourseCatalog.lessons(course).sortedBy { it.courseLessonNumber }
-            assertEquals("${course.name} lesson count", 100, lessons.size)
-            assertEquals("${course.name} course numbering", (1..100).toList(), lessons.map { it.courseLessonNumber })
+            val expectedCount = if (course == CourseLevel.AGE_17_20) 50 else 100
+            assertEquals("${course.name} lesson count", expectedCount, lessons.size)
+            assertEquals("${course.name} course numbering", (1..expectedCount).toList(), lessons.map { it.courseLessonNumber })
             assertEquals("${course.name} persistent ids", idRange.toList(), lessons.map { it.id })
 
             lessons.forEach { lesson ->
@@ -67,7 +69,7 @@ class CatalogIntegrityTest {
             assertTrue("lesson ${lesson.id} natural Korean missing", pronunciation.naturalKorean.isNotBlank())
             assertTrue("lesson ${lesson.id} rhythm missing", pronunciation.rhythm.isNotBlank())
 
-            if (lesson.course == CourseLevel.AGE_14_16) {
+            if (lesson.course == CourseLevel.AGE_14_16 || lesson.course == CourseLevel.AGE_17_20) {
                 val hasStressNotation = pronunciation.rhythmEnglish.contains("●") ||
                     Regex("[A-Z]{2,}").containsMatchIn(pronunciation.rhythmEnglish)
                 assertTrue("lesson ${lesson.id} stress notation missing", hasStressNotation)
