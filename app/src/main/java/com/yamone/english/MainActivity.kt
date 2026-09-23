@@ -135,6 +135,18 @@ private class StudyStore(context: Context) {
             .apply()
     }
 
+    fun expressionCompletedIds(): Set<Int> =
+        prefs.getStringSet("expression_completed", emptySet()).orEmpty()
+            .mapNotNull { it.toIntOrNull() }
+            .toSet()
+
+    fun markExpressionCompleted(id: Int) {
+        val next = expressionCompletedIds().toMutableSet().apply { add(id) }
+        prefs.edit()
+            .putStringSet("expression_completed", next.map { it.toString() }.toSet())
+            .apply()
+    }
+
     fun speechRate(): Float = prefs.getFloat("speech_rate", 0.85f)
     fun setSpeechRate(value: Float) = prefs.edit().putFloat("speech_rate", value).apply()
 
@@ -160,6 +172,7 @@ private fun YamoneEnglishApp() {
     var completed by remember { mutableStateOf(store.completedIds()) }
     var reviewIds by remember { mutableStateOf(store.reviewIds()) }
     var thinkingCompleted by remember { mutableStateOf(store.thinkingCompletedIds()) }
+    var expressionCompleted by remember { mutableStateOf(store.expressionCompletedIds()) }
     var speechRate by remember { mutableFloatStateOf(store.speechRate()) }
     var showKorean by remember { mutableStateOf(store.showKorean()) }
     var showSoundGuide by remember { mutableStateOf(store.showSoundGuide()) }
@@ -187,6 +200,30 @@ private fun YamoneEnglishApp() {
         val action = {
             isListening = true
             voice.start(
+                locale = "en-US",
+                onResult = {
+                    isListening = false
+                    onResult(it)
+                },
+                onError = {
+                    isListening = false
+                    scope.launch { snackbarHostState.showSnackbar(it) }
+                }
+            )
+        }
+        if (micGranted) {
+            action()
+        } else {
+            pendingVoiceAction = action
+            micLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    val startKoreanListening: ((String) -> Unit) -> Unit = { onResult ->
+        val action = {
+            isListening = true
+            voice.start(
+                locale = "ko-KR",
                 onResult = {
                     isListening = false
                     onResult(it)
@@ -291,11 +328,17 @@ private fun YamoneEnglishApp() {
                     thinkingCompleted = store.thinkingCompletedIds()
                 }
             )
-            AppTab.TALK -> FreeTalkScreen(
+            AppTab.TALK -> ExpressionTalkScreen(
                 modifier = Modifier.padding(padding),
+                completedIds = expressionCompleted,
                 isListening = isListening,
                 speak = { tts.speak(it, speechRate) },
-                listen = startListening
+                listenKorean = startKoreanListening,
+                listenEnglish = startListening,
+                onComplete = { id ->
+                    store.markExpressionCompleted(id)
+                    expressionCompleted = store.expressionCompletedIds()
+                }
             )
             AppTab.REVIEW -> ReviewScreen(
                 modifier = Modifier.padding(padding),
@@ -1101,7 +1144,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.1.8")
+        Text("Yamone English v0.1.9")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
 }
