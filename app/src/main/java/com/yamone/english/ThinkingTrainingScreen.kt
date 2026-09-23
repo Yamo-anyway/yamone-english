@@ -307,6 +307,7 @@ fun ThinkingTrainingScreen(
                             onSpeakingResult(lesson.id, spokenScore >= 75)
                         }
                     },
+                    enabled = !isListening,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Default.Mic, contentDescription = null)
