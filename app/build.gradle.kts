@@ -12,8 +12,8 @@ android {
         applicationId = "com.yamone.english"
         minSdk = 26
         targetSdk = 35
-        versionCode = 23
-        versionName = "0.5.0"
+        versionCode = 24
+        versionName = "0.5.1"
     }
 
     compileOptions {
@@ -44,4 +44,5 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    testImplementation("junit:junit:4.13.2")
 }
