@@ -355,6 +355,8 @@ private fun YamoneEnglishApp() {
                 },
                 onBack = { showAssessment = false }
             )
+
+            CourseLevel.AGE_17_20 -> Unit
         }
         return
     }
@@ -769,6 +771,22 @@ private fun TodayScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                             }
+                        }
+                    }
+                }
+            }
+
+            CourseLevel.AGE_17_20 -> {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(Modifier.padding(18.dp)) {
+                            Text("17~20세 과정", fontWeight = FontWeight.Bold)
+                            Text("현재 1~50 레슨 · 학교·대학·직장 초입·관계·독립·의견·디지털·AI")
+                            Spacer(Modifier.height(8.dp))
+                            Text("과정 테스트는 100개 레슨 완성 후 열립니다.")
                         }
                     }
                 }
