@@ -112,7 +112,10 @@ object PronunciationQaCatalog {
         PronunciationQaGuide(100, "Good ●NIGHT ↘", "굿 / 나잇", "굿 ●나잇↘", "약-강 ↘")
     )
 
-    private val allGuides = guides + Age810PronunciationQaCatalog.guides
+    private val allGuides =
+        guides +
+            Age810PronunciationQaCatalog.guides +
+            Age1113PronunciationQaCatalog.guides
 
     fun byLessonId(id: Int): PronunciationQaGuide =
         allGuides.firstOrNull { it.lessonId == id }
