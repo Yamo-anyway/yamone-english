@@ -1,7 +1,7 @@
 package com.yamone.english
 
 object Age1113PronunciationQaCatalog {
-    val guides = listOf(
+    private val baseGuides = listOf(
         PronunciationQaGuide(301, "I don't THINK that's the MAIN POINT ↘", "아이 / 돈트 / 띵크 / 댓츠 / 더 / 메인 / 포인트", "아이 돈(트) ●띵크 댓츠 더 ●메인 포인트↘", "약-약-강-약-약-강 ↘"),
         PronunciationQaGuide(302, "Could‿you GIVE me an ex●AM-ple ↗", "쿠드 / 유 / 기브 / 미 / 언 / 이그잼플", "쿠쥬 ●기미 언 이그●잼플↗", "약-약-강-약-약-강 ↗"),
         PronunciationQaGuide(303, "I SEE‿it a little ●DIFF-er-ent-ly ↘", "아이 / 씨 / 잇 / 어 / 리를 / 디프런틀리", "아이 ●씨이러 리를 ●디프런틀리↘", "약-강-약-약-약-강 ↘"),
@@ -53,4 +53,7 @@ object Age1113PronunciationQaCatalog {
         PronunciationQaGuide(349, "I'm NOT where I want to BE yet ↘", "아임 / 낫 / 웨어 / 아이 / 원트 / 투 / 비 / 옛", "아임 ●낫 웨어라이 워너 ●비 옛↘", "약-강-약-약-약-약-강-약 ↘"),
         PronunciationQaGuide(350, "I'm PROUD of how FAR I've COME ↘", "아임 / 프라우드 / 어브 / 하우 / 파 / 아이브 / 컴", "아임 ●프라우더브 하우 ●파 아이브 ●컴↘", "약-강-약-약-강-약-강 ↘")
     )
+
+    val guides: List<PronunciationQaGuide> =
+        baseGuides + Age1113PronunciationQaExpansionCatalog.guides
 }
