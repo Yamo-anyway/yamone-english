@@ -72,7 +72,10 @@ object LessonCatalog {
     )
 
     val lessons: List<Lesson> =
-        baseLessons + LessonExpansionCatalog.lessons + Age810LessonCatalog.lessons
+        baseLessons +
+            LessonExpansionCatalog.lessons +
+            Age810LessonCatalog.lessons +
+            Age1113LessonCatalog.lessons
 
     fun byId(id: Int): Lesson? = lessons.firstOrNull { it.id == id }
 }
