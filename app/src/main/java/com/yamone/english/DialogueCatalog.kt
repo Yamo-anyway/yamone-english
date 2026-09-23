@@ -422,7 +422,8 @@ object DialogueCatalog {
             Age1113DialogueCatalog.dialogues +
             Age1416DialogueCatalog.dialogues +
             Age1416DialogueExpansionCatalog.dialogues +
-            Age1720DialogueCatalog.dialogues
+            Age1720DialogueCatalog.dialogues +
+            Age1720DialogueExpansionCatalog.dialogues
 
     fun byLessonId(id: Int): LessonDialogue? = dialogues.firstOrNull { it.lessonId == id }
 }
