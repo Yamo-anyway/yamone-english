@@ -95,8 +95,7 @@ private enum class AppTab(val label: String) {
     LISTEN("듣기"),
     THINK("어순"),
     TALK("대화"),
-    REVIEW("복습"),
-    SETTINGS("설정")
+    REVIEW("복습")
 }
 
 private class StudyStore(context: Context) {
@@ -172,6 +171,7 @@ private fun YamoneEnglishApp() {
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
     var selectedLesson by remember { mutableStateOf<Lesson?>(null) }
     var showAssessment by rememberSaveable { mutableStateOf(false) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
     var latestAssessment by remember { mutableStateOf(assessmentStore.latest()) }
     var completed by remember { mutableStateOf(store.completedIds()) }
     var reviewIds by remember { mutableStateOf(store.reviewIds()) }
@@ -255,6 +255,28 @@ private fun YamoneEnglishApp() {
         }
     }
 
+    if (showSettings) {
+        SettingsScreen(
+            speechRate = speechRate,
+            showKorean = showKorean,
+            showSoundGuide = showSoundGuide,
+            onSpeechRateChange = {
+                speechRate = it
+                store.setSpeechRate(it)
+            },
+            onShowKoreanChange = {
+                showKorean = it
+                store.setShowKorean(it)
+            },
+            onShowSoundGuideChange = {
+                showSoundGuide = it
+                store.setShowSoundGuide(it)
+            },
+            onBack = { showSettings = false }
+        )
+        return
+    }
+
     if (showAssessment) {
         Age57AssessmentScreen(
             isListening = isListening,
@@ -323,7 +345,6 @@ private fun YamoneEnglishApp() {
                                     AppTab.THINK -> Icons.Default.SwapHoriz
                                     AppTab.TALK -> Icons.Default.Mic
                                     AppTab.REVIEW -> Icons.Default.Refresh
-                                    AppTab.SETTINGS -> Icons.Default.Settings
                                 },
                                 contentDescription = tab.label
                             )
@@ -347,7 +368,8 @@ private fun YamoneEnglishApp() {
                 onOpenListening = { tabIndex = AppTab.LISTEN.ordinal },
                 onOpenThinking = { tabIndex = AppTab.THINK.ordinal },
                 onOpenTalk = { tabIndex = AppTab.TALK.ordinal },
-                onOpenReview = { tabIndex = AppTab.REVIEW.ordinal }
+                onOpenReview = { tabIndex = AppTab.REVIEW.ordinal },
+                onOpenSettings = { showSettings = true }
             )
             AppTab.LISTEN -> EnhancedListenScreen(
                 modifier = Modifier.padding(padding),
@@ -407,24 +429,6 @@ private fun YamoneEnglishApp() {
                     unifiedReviewItems = reviewStore.items()
                 }
             )
-            AppTab.SETTINGS -> SettingsScreen(
-                modifier = Modifier.padding(padding),
-                speechRate = speechRate,
-                showKorean = showKorean,
-                showSoundGuide = showSoundGuide,
-                onSpeechRateChange = {
-                    speechRate = it
-                    store.setSpeechRate(it)
-                },
-                onShowKoreanChange = {
-                    showKorean = it
-                    store.setShowKorean(it)
-                },
-                onShowSoundGuideChange = {
-                    showSoundGuide = it
-                    store.setShowSoundGuide(it)
-                }
-            )
         }
     }
 }
@@ -442,7 +446,8 @@ private fun TodayScreen(
     onOpenListening: () -> Unit,
     onOpenThinking: () -> Unit,
     onOpenTalk: () -> Unit,
-    onOpenReview: () -> Unit
+    onOpenReview: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val total = LessonCatalog.lessons.size
     val next = LessonCatalog.lessons.firstOrNull { it.id !in completed } ?: LessonCatalog.lessons.last()
@@ -472,11 +477,18 @@ private fun TodayScreen(
                 progress = completed.size.toFloat() / total.toFloat(),
                 modifier = Modifier.fillMaxWidth()
             )
-            Text(
-                completed.size.toString() + " / " + total + " 완료",
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.End
-            )
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(completed.size.toString() + " / " + total + " 완료")
+                TextButton(onClick = onOpenSettings) {
+                    Icon(Icons.Default.Settings, contentDescription = null)
+                    Spacer(Modifier.size(4.dp))
+                    Text("설정")
+                }
+            }
         }
 
         item {
@@ -1242,6 +1254,7 @@ private fun ReviewScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsScreen(
     modifier: Modifier = Modifier,
@@ -1250,10 +1263,22 @@ private fun SettingsScreen(
     showSoundGuide: Boolean,
     onSpeechRateChange: (Float) -> Unit,
     onShowKoreanChange: (Boolean) -> Unit,
-    onShowSoundGuideChange: (Boolean) -> Unit
+    onShowSoundGuideChange: (Boolean) -> Unit,
+    onBack: () -> Unit = {}
 ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("설정") },
+                navigationIcon = {
+                    TextButton(onClick = onBack) { Text("닫기") }
+                }
+            )
+        }
+    ) { padding ->
     Column(
         modifier = modifier
+            .padding(padding)
             .fillMaxSize()
             .padding(20.dp)
             .verticalScroll(rememberScrollState()),
@@ -1309,8 +1334,9 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.1.13")
+        Text("Yamone English v0.1.14")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
+    }
     }
 }
 
