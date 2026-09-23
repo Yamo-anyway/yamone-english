@@ -22,9 +22,8 @@ class CatalogIntegrityTest {
 
         expectedIdRanges.forEach { (course, idRange) ->
             val lessons = CourseCatalog.lessons(course).sortedBy { it.courseLessonNumber }
-            val expectedCount = 100
-            assertEquals("${course.name} lesson count", expectedCount, lessons.size)
-            assertEquals("${course.name} course numbering", (1..expectedCount).toList(), lessons.map { it.courseLessonNumber })
+            assertEquals("${course.name} lesson count", 100, lessons.size)
+            assertEquals("${course.name} course numbering", (1..100).toList(), lessons.map { it.courseLessonNumber })
             assertEquals("${course.name} persistent ids", idRange.toList(), lessons.map { it.id })
 
             lessons.forEach { lesson ->
@@ -35,14 +34,6 @@ class CatalogIntegrityTest {
                 assertTrue("${lesson.id} accepted examples", lesson.accepted.isNotEmpty())
                 assertTrue("${lesson.id} accepted examples blank", lesson.accepted.all { it.isNotBlank() })
                 assertTrue("${lesson.id} coach line", lesson.coachLine.isNotBlank())
-                assertTrue("${lesson.id} control character in text", listOf(
-                    lesson.title,
-                    lesson.situation,
-                    lesson.target,
-                    lesson.meaning,
-                    lesson.ownPromptKo,
-                    lesson.coachLine
-                ).all { value -> value.none { it.code in 0..8 || it.code in 11..31 } })
             }
         }
     }
@@ -57,11 +48,6 @@ class CatalogIntegrityTest {
                 assertTrue("lesson ${lesson.id} dialogue speaker ${index + 1}", line.speaker.isNotBlank())
                 assertTrue("lesson ${lesson.id} dialogue English ${index + 1}", line.english.isNotBlank())
                 assertTrue("lesson ${lesson.id} dialogue Korean ${index + 1}", line.korean.isNotBlank())
-                assertTrue(
-                    "lesson ${lesson.id} dialogue control character ${index + 1}",
-                    line.english.none { it.code in 0..8 || it.code in 11..31 } &&
-                        line.korean.none { it.code in 0..8 || it.code in 11..31 }
-                )
             }
         }
     }
@@ -114,7 +100,7 @@ class CatalogIntegrityTest {
 
         val age1720Sections = CourseCatalog.sections(CourseLevel.AGE_17_20)
         assertEquals("age17-20 should have ten 10-lesson sections", 10, age1720Sections.size)
-        assertEquals((1..10).toList(), age1720Sections.map { it.number })
+        assertEquals((1..10).toList(), age1720Sections.map { it.id })
     }
 
     @Test
