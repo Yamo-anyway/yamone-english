@@ -5,12 +5,19 @@ import android.os.Handler
 import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.speech.tts.Voice
 import java.util.Locale
 
 enum class ListenMode(val label: String) {
     ENGLISH_ONLY("영어만"),
     ENGLISH_KOREAN("영어 → 해석"),
     ENGLISH_KOREAN_ENGLISH("영어 → 해석 → 영어")
+}
+
+enum class ListenVoiceMode(val label: String) {
+    STANDARD("기본"),
+    ALTERNATE("다른 목소리"),
+    DIALOGUE_AB("A·B 교차")
 }
 
 data class ListeningSegment(
@@ -98,7 +105,10 @@ class ListeningPlayer(context: Context) {
     private var segments: List<ListeningSegment> = emptyList()
     private var index = 0
     private var englishRate = 0.85f
+    private var voiceMode = ListenVoiceMode.STANDARD
     private var token = 0L
+    private var englishVoices: List<Voice> = emptyList()
+    private var koreanVoices: List<Voice> = emptyList()
     private var onSegmentChanged: ((Int, ListeningSegment) -> Unit)? = null
     private var onComplete: (() -> Unit)? = null
     private var onError: ((String) -> Unit)? = null
@@ -110,6 +120,9 @@ class ListeningPlayer(context: Context) {
                 mainHandler.post { onError?.invoke("음성 재생기를 시작할 수 없습니다.") }
                 return@TextToSpeech
             }
+
+            refreshVoices()
+
             tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) = Unit
 
@@ -120,7 +133,12 @@ class ListeningPlayer(context: Context) {
                     val previousLesson = segments.getOrNull(index)?.lessonId
                     index += 1
                     val nextLesson = segments.getOrNull(index)?.lessonId
-                    val pause = if (previousLesson != null && nextLesson != null && previousLesson != nextLesson) 900L else 350L
+                    val pause = if (
+                        previousLesson != null &&
+                        nextLesson != null &&
+                        previousLesson != nextLesson
+                    ) 850L else 260L
+
                     mainHandler.postDelayed({ speakCurrent(expectedToken) }, pause)
                 }
 
@@ -146,6 +164,7 @@ class ListeningPlayer(context: Context) {
     fun play(
         newSegments: List<ListeningSegment>,
         rate: Float,
+        voiceMode: ListenVoiceMode = ListenVoiceMode.STANDARD,
         onSegmentChanged: (Int, ListeningSegment) -> Unit,
         onComplete: () -> Unit,
         onError: (String) -> Unit
@@ -155,6 +174,7 @@ class ListeningPlayer(context: Context) {
         segments = newSegments
         index = 0
         englishRate = rate
+        this.voiceMode = voiceMode
         this.onSegmentChanged = onSegmentChanged
         this.onComplete = onComplete
         this.onError = onError
@@ -165,6 +185,7 @@ class ListeningPlayer(context: Context) {
         }
 
         if (ready) {
+            refreshVoices()
             speakCurrent(token)
         }
     }
@@ -178,6 +199,7 @@ class ListeningPlayer(context: Context) {
         tts?.stop()
         segments = emptyList()
         index = 0
+
         if (clearCallbacks) {
             onSegmentChanged = null
             onComplete = null
@@ -185,8 +207,28 @@ class ListeningPlayer(context: Context) {
         }
     }
 
+    private fun refreshVoices() {
+        val voices = tts?.voices.orEmpty()
+        englishVoices = voices
+            .filter { it.locale.language.equals("en", ignoreCase = true) }
+            .sortedWith(
+                compareBy<Voice> { it.isNetworkConnectionRequired }
+                    .thenByDescending { it.quality }
+                    .thenBy { it.name }
+            )
+
+        koreanVoices = voices
+            .filter { it.locale.language.equals("ko", ignoreCase = true) }
+            .sortedWith(
+                compareBy<Voice> { it.isNetworkConnectionRequired }
+                    .thenByDescending { it.quality }
+                    .thenBy { it.name }
+            )
+    }
+
     private fun speakCurrent(expectedToken: Long) {
         if (expectedToken != token) return
+
         val segment = segments.getOrNull(index)
         if (segment == null) {
             val completed = onComplete
@@ -195,9 +237,14 @@ class ListeningPlayer(context: Context) {
             return
         }
 
+        val engine = tts ?: return
         val locale = Locale.forLanguageTag(segment.languageTag)
-        val languageResult = tts?.setLanguage(locale) ?: TextToSpeech.LANG_NOT_SUPPORTED
-        if (languageResult == TextToSpeech.LANG_MISSING_DATA || languageResult == TextToSpeech.LANG_NOT_SUPPORTED) {
+        val languageResult = engine.setLanguage(locale)
+
+        if (
+            languageResult == TextToSpeech.LANG_MISSING_DATA ||
+            languageResult == TextToSpeech.LANG_NOT_SUPPORTED
+        ) {
             onError?.invoke(
                 if (segment.languageTag.startsWith("ko")) "기기에 한국어 TTS 음성이 없습니다."
                 else "기기에 영어 TTS 음성이 없습니다."
@@ -206,17 +253,60 @@ class ListeningPlayer(context: Context) {
             return
         }
 
-        tts?.setSpeechRate(
-            if (segment.languageTag.startsWith("ko")) 0.95f
-            else englishRate.coerceIn(0.5f, 1.2f)
-        )
+        if (segment.languageTag.startsWith("ko")) {
+            koreanVoices.firstOrNull()?.let { engine.voice = it }
+            engine.setPitch(1.0f)
+            engine.setSpeechRate(0.95f)
+        } else {
+            configureEnglishVoice(engine, segment)
+            engine.setSpeechRate(englishRate.coerceIn(0.5f, 1.25f))
+        }
+
         mainHandler.post { onSegmentChanged?.invoke(index, segment) }
-        tts?.speak(
+
+        engine.speak(
             segment.text,
             TextToSpeech.QUEUE_FLUSH,
             null,
             expectedToken.toString() + "-" + index
         )
+    }
+
+    private fun configureEnglishVoice(engine: TextToSpeech, segment: ListeningSegment) {
+        val primary = englishVoices.getOrNull(0)
+        val alternate = englishVoices.getOrNull(1) ?: primary
+        val third = englishVoices.getOrNull(2) ?: alternate
+
+        when (voiceMode) {
+            ListenVoiceMode.STANDARD -> {
+                primary?.let { engine.voice = it }
+                engine.setPitch(1.0f)
+            }
+
+            ListenVoiceMode.ALTERNATE -> {
+                alternate?.let { engine.voice = it }
+                engine.setPitch(if (englishVoices.size > 1) 1.0f else 1.08f)
+            }
+
+            ListenVoiceMode.DIALOGUE_AB -> {
+                when (segment.speaker) {
+                    "A" -> {
+                        primary?.let { engine.voice = it }
+                        engine.setPitch(0.96f)
+                    }
+
+                    "B" -> {
+                        alternate?.let { engine.voice = it }
+                        engine.setPitch(if (englishVoices.size > 1) 1.03f else 1.10f)
+                    }
+
+                    else -> {
+                        third?.let { engine.voice = it }
+                        engine.setPitch(1.0f)
+                    }
+                }
+            }
+        }
     }
 
     fun shutdown() {
