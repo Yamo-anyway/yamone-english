@@ -1,0 +1,126 @@
+name: Expand Age 14-16 Course
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - ".github/workflows/expand-age1416.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  expand:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Apply 14-16 expansion
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, zlib
+
+          src = Path("app/src/main/java/com/yamone/english")
+          payload = Path(".yamone-payload")
+          files = {
+              "Age1416LessonExpansionCatalog.kt.z": src / "Age1416LessonExpansionCatalog.kt",
+              "Age1416DialogueExpansionCatalog.kt.z": src / "Age1416DialogueExpansionCatalog.kt",
+              "Age1416ThinkingExpansionCatalog.kt.z": src / "Age1416ThinkingExpansionCatalog.kt",
+              "Age1416PronunciationQaExpansionCatalog.kt.z": src / "Age1416PronunciationQaExpansionCatalog.kt",
+          }
+          for packed, destination in files.items():
+              destination.write_bytes(zlib.decompress((payload / packed).read_bytes()))
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise RuntimeError(f"{path}: expected one match, got {count}: {old!r}")
+              p.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          replace_once(
+              src / "LessonCatalog.kt",
+              "            Age1416LessonCatalog.lessons\n",
+              "            Age1416LessonCatalog.lessons +\n            Age1416LessonExpansionCatalog.lessons\n",
+          )
+          replace_once(
+              src / "DialogueCatalog.kt",
+              "            Age1416DialogueCatalog.dialogues\n",
+              "            Age1416DialogueCatalog.dialogues +\n            Age1416DialogueExpansionCatalog.dialogues\n",
+          )
+          replace_once(
+              src / "ThinkingCatalog.kt",
+              "            Age1416ThinkingCatalog.guides\n",
+              "            Age1416ThinkingCatalog.guides +\n            Age1416ThinkingExpansionCatalog.guides\n",
+          )
+          replace_once(
+              src / "PronunciationQaCatalog.kt",
+              "            Age1416PronunciationQaCatalog.guides\n",
+              "            Age1416PronunciationQaCatalog.guides +\n            Age1416PronunciationQaExpansionCatalog.guides\n",
+          )
+          replace_once(
+              src / "Age1416CourseSections.kt",
+              '        CourseSection(5, "41~50 · 사회·미디어·자기표현", 441..450)\n',
+              '        CourseSection(5, "41~50 · 사회·미디어·자기표현", 441..450),\n'
+              '        CourseSection(6, "51~60 · 토론·근거·반론", 451..460),\n'
+              '        CourseSection(7, "61~70 · 문제해결·협업·리더십", 461..470),\n'
+              '        CourseSection(8, "71~80 · 뉴스·AI·디지털 판단", 471..480),\n'
+              '        CourseSection(9, "81~90 · 진로·목표·자기관리", 481..490),\n'
+              '        CourseSection(10, "91~100 · 가치·사회·자기표현", 491..500)\n',
+          )
+          replace_once("app/build.gradle.kts", "        versionCode = 22\n", "        versionCode = 23\n")
+          replace_once("app/build.gradle.kts", '        versionName = "0.4.0"\n', '        versionName = "0.5.0"\n')
+
+          lesson = (src / "Age1416LessonExpansionCatalog.kt").read_text(encoding="utf-8")
+          thinking = (src / "Age1416ThinkingExpansionCatalog.kt").read_text(encoding="utf-8")
+          pronunciation = (src / "Age1416PronunciationQaExpansionCatalog.kt").read_text(encoding="utf-8")
+          dialogue = (src / "Age1416DialogueExpansionCatalog.kt").read_text(encoding="utf-8")
+          assert lesson.count("        Seed(") == 50
+          assert set(map(int, re.findall(r"ThinkingGuide\((\d+),", thinking))) == set(range(451, 501))
+          assert set(map(int, re.findall(r"PronunciationQaGuide\((\d+),", pronunciation))) == set(range(451, 501))
+          assert "in 51..60" in dialogue and "in 91..100" in dialogue
+          print("Validated age 14-16 lessons 51..100 / ids 451..500")
+          PY
+
+      - name: Validate diff
+        run: |
+          git diff --check
+          grep -q 'versionName = "0.5.0"' app/build.gradle.kts
+          grep -q '51~60 · 토론·근거·반론' app/src/main/java/com/yamone/english/Age1416CourseSections.kt
+          grep -q '91~100 · 가치·사회·자기표현' app/src/main/java/com/yamone/english/Age1416CourseSections.kt
+
+      - name: Build expanded debug APK
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Upload expanded debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: yamone-english-v0.5.0-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Commit expansion to main
+        shell: bash
+        run: |
+          git config user.name "Yamone English Automation"
+          git config user.email "actions@users.noreply.github.com"
+          rm -rf .yamone-payload
+          git rm .github/workflows/expand-age1416.yml
+          git add app
+          git commit -m "feat: expand age 14-16 course to 100 lessons"
+          git push origin HEAD:main
