@@ -161,6 +161,7 @@ private class StudyStore(context: Context) {
 private fun YamoneEnglishApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val store = remember { StudyStore(context) }
+    val reviewStore = remember { UnifiedReviewStore(context) }
     val voice = remember { VoiceController(context) }
     val tts = remember { EnglishTts(context) }
     val listeningPlayer = remember { ListeningPlayer(context) }
@@ -171,6 +172,7 @@ private fun YamoneEnglishApp() {
     var selectedLesson by remember { mutableStateOf<Lesson?>(null) }
     var completed by remember { mutableStateOf(store.completedIds()) }
     var reviewIds by remember { mutableStateOf(store.reviewIds()) }
+    var unifiedReviewItems by remember { mutableStateOf(reviewStore.items()) }
     var thinkingCompleted by remember { mutableStateOf(store.thinkingCompletedIds()) }
     var expressionCompleted by remember { mutableStateOf(store.expressionCompletedIds()) }
     var speechRate by remember { mutableFloatStateOf(store.speechRate()) }
@@ -259,9 +261,15 @@ private fun YamoneEnglishApp() {
             speak = { tts.speak(it, speechRate) },
             listen = startListening,
             onBack = { selectedLesson = null },
-            onNeedReview = { id ->
-                store.addReview(id)
-                reviewIds = store.reviewIds()
+            onSpeakingResult = { id, success ->
+                if (success) {
+                    reviewStore.recordSuccess(id, ReviewKind.SPEAKING)
+                } else {
+                    reviewStore.recordError(id, ReviewKind.SPEAKING)
+                    store.addReview(id)
+                    reviewIds = store.reviewIds()
+                }
+                unifiedReviewItems = reviewStore.items()
             },
             onComplete = { id ->
                 store.markCompleted(id)
@@ -315,6 +323,11 @@ private fun YamoneEnglishApp() {
                 speechRate = speechRate,
                 onMessage = { message ->
                     scope.launch { snackbarHostState.showSnackbar(message) }
+                },
+                onReviewResult = { id, kind, success ->
+                    if (success) reviewStore.recordSuccess(id, kind)
+                    else reviewStore.recordError(id, kind)
+                    unifiedReviewItems = reviewStore.items()
                 }
             )
             AppTab.THINK -> ThinkingTrainingScreen(
@@ -326,6 +339,16 @@ private fun YamoneEnglishApp() {
                 onComplete = { id ->
                     store.markThinkingCompleted(id)
                     thinkingCompleted = store.thinkingCompletedIds()
+                },
+                onOrderResult = { id, success ->
+                    if (success) reviewStore.recordSuccess(id, ReviewKind.ORDER)
+                    else reviewStore.recordError(id, ReviewKind.ORDER)
+                    unifiedReviewItems = reviewStore.items()
+                },
+                onSpeakingResult = { id, success ->
+                    if (success) reviewStore.recordSuccess(id, ReviewKind.SPEAKING)
+                    else reviewStore.recordError(id, ReviewKind.SPEAKING)
+                    unifiedReviewItems = reviewStore.items()
                 }
             )
             AppTab.TALK -> ExpressionTalkScreen(
@@ -340,11 +363,17 @@ private fun YamoneEnglishApp() {
                     expressionCompleted = store.expressionCompletedIds()
                 }
             )
-            AppTab.REVIEW -> ReviewScreen(
+            AppTab.REVIEW -> UnifiedReviewScreen(
                 modifier = Modifier.padding(padding),
-                reviewIds = reviewIds,
-                completed = completed,
-                onOpenLesson = { selectedLesson = it }
+                items = unifiedReviewItems,
+                isListening = isListening,
+                speak = { tts.speak(it, speechRate) },
+                listen = startListening,
+                onResult = { id, kind, success ->
+                    if (success) reviewStore.recordSuccess(id, kind)
+                    else reviewStore.recordError(id, kind)
+                    unifiedReviewItems = reviewStore.items()
+                }
             )
             AppTab.SETTINGS -> SettingsScreen(
                 modifier = Modifier.padding(padding),
@@ -468,7 +497,7 @@ private fun LessonScreen(
     speak: (String) -> Unit,
     listen: ((String) -> Unit) -> Unit,
     onBack: () -> Unit,
-    onNeedReview: (Int) -> Unit,
+    onSpeakingResult: (Int, Boolean) -> Unit,
     onComplete: (Int) -> Unit,
     onOpenNext: (Int) -> Unit
 ) {
@@ -549,7 +578,7 @@ private fun LessonScreen(
                             listen { text ->
                                 recognized = text
                                 matchScore = sentenceMatch(text, listOf(lesson.target))
-                                if (matchScore < 70) onNeedReview(lesson.id)
+                                onSpeakingResult(lesson.id, matchScore >= 75)
                             }
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -1144,7 +1173,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.1.10")
+        Text("Yamone English v0.1.11")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
 }
