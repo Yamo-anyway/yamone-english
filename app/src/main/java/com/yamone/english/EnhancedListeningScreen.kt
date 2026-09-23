@@ -182,10 +182,11 @@ fun EnhancedListenScreen(
                     }
 
                     if (revealAnswer) {
+                        val guide = PronunciationQaCatalog.byLessonId(lesson.id)
                         Text(lesson.target, fontSize = 25.sp, fontWeight = FontWeight.Bold)
                         Text(lesson.meaning, fontSize = 17.sp)
-                        Text(lesson.soundEnglish, fontSize = 16.sp)
-                        Text(SoundGuideCatalog.byLessonId(lesson.id).naturalKorean, fontSize = 18.sp)
+                        Text(guide.rhythmEnglish, fontSize = 16.sp)
+                        Text(guide.naturalKorean, fontSize = 18.sp)
                     }
 
                     Button(
