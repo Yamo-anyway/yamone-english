@@ -1,7 +1,7 @@
 package com.yamone.english
 
 object Age810DialogueCatalog {
-    val dialogues = listOf(
+    private val baseDialogues = listOf(
         LessonDialogue(201, listOf(
             DialogueLine("A", "Did you bring your homework?", "숙제 가져왔어?"),
             DialogueLine("B", "I forgot my homework.", "숙제를 깜빡했어."),
@@ -403,4 +403,7 @@ object Age810DialogueCatalog {
             DialogueLine("B", "Wow. That's interesting.", "와, 흥미롭다.")
         ))
     )
+
+    val dialogues: List<LessonDialogue> =
+        baseDialogues + Age810DialogueExpansionCatalog.dialogues
 }
