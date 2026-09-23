@@ -451,7 +451,7 @@ private fun Age1113AssessmentResult(
         Age1113ResultRow("듣기", summary.listeningCorrect, summary.label(summary.listeningCorrect))
         Age1113ResultRow("말하기", summary.speakingCorrect, summary.label(summary.speakingCorrect))
         Age1113ResultRow("어순", summary.orderCorrect, summary.label(summary.orderCorrect))
-        Age1113ResultRow("상황·추론", summary.situationCorrect, summary.label(summary.situationCorrect))
+        Age1113ResultRow("상황·판단", summary.situationCorrect, summary.label(summary.situationCorrect))
 
         HorizontalDivider()
         Text("틀린 문항은 11~13세 자동 복습에 이미 반영되었습니다.")
