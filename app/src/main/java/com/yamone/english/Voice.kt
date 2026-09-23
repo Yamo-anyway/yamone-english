@@ -80,18 +80,27 @@ class VoiceController(private val context: Context) : RecognitionListener {
 
 class EnglishTts(context: Context) {
     private var ready = false
-    private val tts = TextToSpeech(context) { status ->
-        ready = status == TextToSpeech.SUCCESS
-        if (ready) {
-            tts.language = Locale.US
+    private var tts: TextToSpeech? = null
+
+    init {
+        tts = TextToSpeech(context) { status ->
+            ready = status == TextToSpeech.SUCCESS
+            if (ready) {
+                tts?.language = Locale.US
+            }
         }
     }
 
     fun speak(text: String, rate: Float = 0.85f) {
+        val engine = tts ?: return
         if (!ready) return
-        tts.setSpeechRate(rate.coerceIn(0.5f, 1.2f))
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "yamone-english")
+        engine.setSpeechRate(rate.coerceIn(0.5f, 1.2f))
+        engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "yamone-english")
     }
 
-    fun shutdown() = tts.shutdown()
+    fun shutdown() {
+        tts?.stop()
+        tts?.shutdown()
+        tts = null
+    }
 }
