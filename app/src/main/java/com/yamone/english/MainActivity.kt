@@ -746,18 +746,20 @@ private fun ListenScreen(
         item {
             Text("듣기 방식", fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
-            ListenMode.entries.forEachIndexed { index, item ->
-                FilterChip(
-                    selected = modeIndex == index,
-                    onClick = {
-                        if (isPlaying) player.stop()
-                        isPlaying = false
-                        playingAll = false
-                        modeIndex = index
-                    },
-                    label = { Text(item.label) },
-                    modifier = Modifier.padding(end = 6.dp)
-                )
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(ListenMode.entries) { item ->
+                    val index = ListenMode.entries.indexOf(item)
+                    FilterChip(
+                        selected = modeIndex == index,
+                        onClick = {
+                            if (isPlaying) player.stop()
+                            isPlaying = false
+                            playingAll = false
+                            modeIndex = index
+                        },
+                        label = { Text(item.label) }
+                    )
+                }
             }
         }
 
