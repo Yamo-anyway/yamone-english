@@ -14,6 +14,9 @@ class CatalogIntegrityTest {
         CourseLevel.AGE_17_20 to (501..600)
     )
 
+    private fun hasControlCharacter(value: String): Boolean =
+        value.any { it.code in 0..8 || it.code in 11..31 || it.code == 127 }
+
     @Test
     fun courseLessonIdsAndNumbersRemainStable() {
         val allIds = LessonCatalog.lessons.map { it.id }
@@ -27,6 +30,7 @@ class CatalogIntegrityTest {
             assertEquals("${course.name} persistent ids", idRange.toList(), lessons.map { it.id })
 
             lessons.forEach { lesson ->
+                assertTrue("${lesson.id} title", lesson.title.isNotBlank())
                 assertTrue("${lesson.id} target", lesson.target.isNotBlank())
                 assertTrue("${lesson.id} meaning", lesson.meaning.isNotBlank())
                 assertTrue("${lesson.id} situation", lesson.situation.isNotBlank())
@@ -34,6 +38,19 @@ class CatalogIntegrityTest {
                 assertTrue("${lesson.id} accepted examples", lesson.accepted.isNotEmpty())
                 assertTrue("${lesson.id} accepted examples blank", lesson.accepted.all { it.isNotBlank() })
                 assertTrue("${lesson.id} coach line", lesson.coachLine.isNotBlank())
+
+                val textFields = listOf(
+                    lesson.title,
+                    lesson.situation,
+                    lesson.target,
+                    lesson.meaning,
+                    lesson.ownPromptKo,
+                    lesson.coachLine
+                ) + lesson.accepted
+                assertTrue(
+                    "lesson ${lesson.id} contains a control character",
+                    textFields.none(::hasControlCharacter)
+                )
             }
         }
     }
@@ -48,6 +65,10 @@ class CatalogIntegrityTest {
                 assertTrue("lesson ${lesson.id} dialogue speaker ${index + 1}", line.speaker.isNotBlank())
                 assertTrue("lesson ${lesson.id} dialogue English ${index + 1}", line.english.isNotBlank())
                 assertTrue("lesson ${lesson.id} dialogue Korean ${index + 1}", line.korean.isNotBlank())
+                assertTrue(
+                    "lesson ${lesson.id} dialogue control character ${index + 1}",
+                    !hasControlCharacter(line.english) && !hasControlCharacter(line.korean)
+                )
             }
         }
     }
@@ -61,12 +82,25 @@ class CatalogIntegrityTest {
                 "lesson ${lesson.id} thinking guide fell back to plain meaning",
                 thinking.englishOrderKorean != lesson.meaning
             )
+            assertTrue(
+                "lesson ${lesson.id} thinking guide control character",
+                !hasControlCharacter(thinking.englishOrderKorean)
+            )
 
             val pronunciation = PronunciationQaCatalog.byLessonId(lesson.id)
             assertTrue("lesson ${lesson.id} rhythm English missing", pronunciation.rhythmEnglish.isNotBlank())
             assertTrue("lesson ${lesson.id} slow Korean missing", pronunciation.slowKorean.isNotBlank())
             assertTrue("lesson ${lesson.id} natural Korean missing", pronunciation.naturalKorean.isNotBlank())
             assertTrue("lesson ${lesson.id} rhythm missing", pronunciation.rhythm.isNotBlank())
+            assertTrue(
+                "lesson ${lesson.id} pronunciation control character",
+                listOf(
+                    pronunciation.rhythmEnglish,
+                    pronunciation.slowKorean,
+                    pronunciation.naturalKorean,
+                    pronunciation.rhythm
+                ).none(::hasControlCharacter)
+            )
 
             if (lesson.course == CourseLevel.AGE_14_16 || lesson.course == CourseLevel.AGE_17_20) {
                 val hasStressNotation = pronunciation.rhythmEnglish.contains("●") ||
@@ -122,5 +156,34 @@ class CatalogIntegrityTest {
 
         assertTrue("assessment must sample first half", questions.any { it.lessonId <= 450 })
         assertTrue("assessment must sample expansion half", questions.any { it.lessonId >= 451 })
+    }
+
+    @Test
+    fun age1720AssessmentIsBalancedAndSamplesTheWholeCourse() {
+        val questions = Age1720AssessmentCatalog.questions
+        assertEquals(28, questions.size)
+        assertEquals((1..28).toList(), questions.map { it.number })
+        assertEquals(28, questions.map { it.lessonId }.toSet().size)
+
+        AssessmentKind.entries.forEach { kind ->
+            assertEquals("$kind question count", 7, questions.count { it.kind == kind })
+        }
+
+        questions.forEach { question ->
+            val lesson = LessonCatalog.byId(question.lessonId)
+            assertNotNull("assessment lesson ${question.lessonId}", lesson)
+            assertEquals(CourseLevel.AGE_17_20, lesson!!.course)
+        }
+
+        val sampledCourseNumbers = questions.mapNotNull {
+            LessonCatalog.byId(it.lessonId)?.courseLessonNumber
+        }
+        (0 until 10).forEach { bucket ->
+            val range = (bucket * 10 + 1)..(bucket * 10 + 10)
+            assertTrue(
+                "age17-20 assessment must sample lessons ${range.first}-${range.last}",
+                sampledCourseNumbers.any { it in range }
+            )
+        }
     }
 }
