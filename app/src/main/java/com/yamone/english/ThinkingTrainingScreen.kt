@@ -48,6 +48,7 @@ private data class ThinkingChunk(
 @Composable
 fun ThinkingTrainingScreen(
     modifier: Modifier = Modifier,
+    course: CourseLevel,
     completedIds: Set<Int>,
     isListening: Boolean,
     speak: (String) -> Unit,
@@ -56,11 +57,18 @@ fun ThinkingTrainingScreen(
     onOrderResult: (Int, Boolean) -> Unit,
     onSpeakingResult: (Int, Boolean) -> Unit
 ) {
-    var selectedLessonId by rememberSaveable { mutableIntStateOf(1) }
-    var sectionIndex by rememberSaveable { mutableIntStateOf(0) }
+    val courseLessons = CourseCatalog.lessons(course)
+    val courseIds = courseLessons.map { it.id }.toSet()
+    val completedInCourse = completedIds.intersect(courseIds)
+    val courseSections = CourseCatalog.sections(course)
 
-    val lesson = LessonCatalog.byId(selectedLessonId) ?: LessonCatalog.lessons.first()
-    val selectedSection = Age57CourseSections.sections[sectionIndex]
+    var selectedLessonId by rememberSaveable(course.name) {
+        mutableIntStateOf(courseLessons.first().id)
+    }
+    var sectionIndex by rememberSaveable(course.name) { mutableIntStateOf(0) }
+
+    val lesson = LessonCatalog.byId(selectedLessonId) ?: courseLessons.first()
+    val selectedSection = courseSections[sectionIndex]
     val sectionLessons = selectedSection.lessons()
     val guide = ThinkingCatalog.byLessonId(lesson.id)
 
@@ -93,11 +101,11 @@ fun ThinkingTrainingScreen(
             Text("한국어를 먼저 영어 어순으로 바꾸고, 영어를 바로 꺼내는 연습입니다.")
             Spacer(Modifier.height(10.dp))
             LinearProgressIndicator(
-                progress = completedIds.size.toFloat() / LessonCatalog.lessons.size.toFloat(),
+                progress = completedInCourse.size.toFloat() / courseLessons.size.toFloat(),
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                completedIds.size.toString() + " / " + LessonCatalog.lessons.size + " 완료",
+                completedInCourse.size.toString() + " / " + courseLessons.size + " 완료",
                 fontSize = 13.sp
             )
         }
@@ -106,13 +114,13 @@ fun ThinkingTrainingScreen(
             Text("레슨", fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(Age57CourseSections.sections, key = { it.id }) { section ->
-                    val index = Age57CourseSections.sections.indexOf(section)
+                items(courseSections, key = { it.id }) { section ->
+                    val index = courseSections.indexOf(section)
                     FilterChip(
                         selected = sectionIndex == index,
                         onClick = {
                             sectionIndex = index
-                            selectedLessonId = section.range.first
+                            selectedLessonId = section.internalIds.first
                         },
                         label = { Text(section.title) }
                     )
@@ -128,8 +136,8 @@ fun ThinkingTrainingScreen(
                         },
                         label = {
                             Text(
-                                if (item.id in completedIds) item.id.toString() + " ✓"
-                                else item.id.toString()
+                                if (item.id in completedInCourse) item.courseLessonNumber.toString() + " ✓"
+                                else item.courseLessonNumber.toString()
                             )
                         }
                     )
@@ -147,7 +155,7 @@ fun ThinkingTrainingScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        lesson.emoji + " " + lesson.id + ". " + lesson.title,
+                        lesson.emoji + " " + lesson.courseLessonNumber + ". " + lesson.title,
                         fontSize = 21.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -331,14 +339,19 @@ fun ThinkingTrainingScreen(
                 Button(
                     onClick = {
                         onComplete(lesson.id)
-                        selectedLessonId =
-                            if (lesson.id >= LessonCatalog.lessons.size) 1 else lesson.id + 1
-                        sectionIndex = Age57CourseSections.indexForLesson(selectedLessonId)
+                        val currentIndex = courseLessons.indexOfFirst { it.id == lesson.id }
+                        val nextLesson = if (currentIndex >= courseLessons.lastIndex) {
+                            courseLessons.first()
+                        } else {
+                            courseLessons[currentIndex + 1]
+                        }
+                        selectedLessonId = nextLesson.id
+                        sectionIndex = CourseCatalog.sectionIndexForLesson(course, selectedLessonId)
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        if (lesson.id in completedIds) "다음 문장"
+                        if (lesson.id in completedInCourse) "다음 문장"
                         else "완료하고 다음 문장"
                     )
                 }
