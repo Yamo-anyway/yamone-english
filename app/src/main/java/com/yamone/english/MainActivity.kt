@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -92,6 +93,7 @@ class MainActivity : ComponentActivity() {
 private enum class AppTab(val label: String) {
     TODAY("오늘"),
     LISTEN("듣기"),
+    THINK("어순"),
     TALK("대화"),
     REVIEW("복습"),
     SETTINGS("설정")
@@ -121,6 +123,18 @@ private class StudyStore(context: Context) {
         prefs.edit().putStringSet("review", next.map { it.toString() }.toSet()).apply()
     }
 
+    fun thinkingCompletedIds(): Set<Int> =
+        prefs.getStringSet("thinking_completed", emptySet()).orEmpty()
+            .mapNotNull { it.toIntOrNull() }
+            .toSet()
+
+    fun markThinkingCompleted(id: Int) {
+        val next = thinkingCompletedIds().toMutableSet().apply { add(id) }
+        prefs.edit()
+            .putStringSet("thinking_completed", next.map { it.toString() }.toSet())
+            .apply()
+    }
+
     fun speechRate(): Float = prefs.getFloat("speech_rate", 0.85f)
     fun setSpeechRate(value: Float) = prefs.edit().putFloat("speech_rate", value).apply()
 
@@ -145,6 +159,7 @@ private fun YamoneEnglishApp() {
     var selectedLesson by remember { mutableStateOf<Lesson?>(null) }
     var completed by remember { mutableStateOf(store.completedIds()) }
     var reviewIds by remember { mutableStateOf(store.reviewIds()) }
+    var thinkingCompleted by remember { mutableStateOf(store.thinkingCompletedIds()) }
     var speechRate by remember { mutableFloatStateOf(store.speechRate()) }
     var showKorean by remember { mutableStateOf(store.showKorean()) }
     var showSoundGuide by remember { mutableStateOf(store.showSoundGuide()) }
@@ -237,6 +252,7 @@ private fun YamoneEnglishApp() {
                                 imageVector = when (tab) {
                                     AppTab.TODAY -> Icons.Default.Home
                                     AppTab.LISTEN -> Icons.Default.VolumeUp
+                                    AppTab.THINK -> Icons.Default.SwapHoriz
                                     AppTab.TALK -> Icons.Default.Mic
                                     AppTab.REVIEW -> Icons.Default.Refresh
                                     AppTab.SETTINGS -> Icons.Default.Settings
@@ -262,6 +278,17 @@ private fun YamoneEnglishApp() {
                 speechRate = speechRate,
                 onMessage = { message ->
                     scope.launch { snackbarHostState.showSnackbar(message) }
+                }
+            )
+            AppTab.THINK -> ThinkingTrainingScreen(
+                modifier = Modifier.padding(padding),
+                completedIds = thinkingCompleted,
+                isListening = isListening,
+                speak = { tts.speak(it, speechRate) },
+                listen = startListening,
+                onComplete = { id ->
+                    store.markThinkingCompleted(id)
+                    thinkingCompleted = store.thinkingCompletedIds()
                 }
             )
             AppTab.TALK -> FreeTalkScreen(
@@ -1074,7 +1101,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.1.7")
+        Text("Yamone English v0.1.8")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
 }
