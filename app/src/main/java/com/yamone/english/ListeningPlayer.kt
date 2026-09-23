@@ -56,8 +56,8 @@ object ListeningPlaylistBuilder {
         return result
     }
 
-    fun all(mode: ListenMode): List<ListeningSegment> =
-        LessonCatalog.lessons.flatMap { lesson(it, mode) }
+    fun all(mode: ListenMode, lessons: List<Lesson> = LessonCatalog.lessons): List<ListeningSegment> =
+        lessons.flatMap { lesson(it, mode) }
 
     private fun appendPair(
         result: MutableList<ListeningSegment>,
