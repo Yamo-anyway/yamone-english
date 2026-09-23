@@ -12,7 +12,9 @@ data class Lesson(
     val connectedNote: String,
     val ownPromptKo: String,
     val accepted: List<String>,
-    val coachLine: String
+    val coachLine: String,
+    val course: CourseLevel = CourseLevel.AGE_5_7,
+    val courseLessonNumber: Int = id
 )
 
 object LessonCatalog {
@@ -69,7 +71,8 @@ object LessonCatalog {
         Lesson(50, "비가 와", "🌧️", "날씨를 말할 때", "It's raining.", "비가 와.", "It's ●RAIN-ing ↘", "잇츠 ●레이닝↘", "raining의 첫 음절에 힘을 주세요.", "밖에 비가 와.", listOf("It's raining outside.", "It's raining."), "Is it raining outside?")
     )
 
-    val lessons: List<Lesson> = baseLessons + LessonExpansionCatalog.lessons
+    val lessons: List<Lesson> =
+        baseLessons + LessonExpansionCatalog.lessons + Age810LessonCatalog.lessons
 
     fun byId(id: Int): Lesson? = lessons.firstOrNull { it.id == id }
 }
