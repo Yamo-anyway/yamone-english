@@ -268,7 +268,7 @@ private fun AssessmentListeningQuestion(
             choices.forEach { choice ->
                 OutlinedButton(
                     onClick = { onAnswer(choice == lesson.meaning) },
-                    enabled = !answered && !isListening,
+                    enabled = !answered,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(choice)
@@ -350,7 +350,7 @@ private fun AssessmentOrderQuestion(
                     FilterChip(
                         selected = false,
                         onClick = { selectedIds = selectedIds + chunk.id },
-                        enabled = !answered && !isListening,
+                        enabled = !answered,
                         label = { Text(chunk.text) }
                     )
                 }
