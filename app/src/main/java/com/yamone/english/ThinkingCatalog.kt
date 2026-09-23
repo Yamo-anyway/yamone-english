@@ -66,7 +66,8 @@ object ThinkingCatalog {
             Age1113ThinkingCatalog.guides +
             Age1416ThinkingCatalog.guides +
             Age1416ThinkingExpansionCatalog.guides +
-            Age1720ThinkingCatalog.guides
+            Age1720ThinkingCatalog.guides +
+            Age1720ThinkingExpansionCatalog.guides
 
     fun byLessonId(id: Int): ThinkingGuide =
         allGuides.firstOrNull { it.lessonId == id }
