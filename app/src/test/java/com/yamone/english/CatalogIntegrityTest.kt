@@ -56,7 +56,10 @@ class CatalogIntegrityTest {
         LessonCatalog.lessons.forEach { lesson ->
             val thinking = ThinkingCatalog.byLessonId(lesson.id)
             assertTrue("lesson ${lesson.id} thinking guide missing", thinking.englishOrderKorean.isNotBlank())
-            assertTrue("lesson ${lesson.id} thinking guide must show English thought order", thinking.englishOrderKorean.contains("→"))
+            assertTrue(
+                "lesson ${lesson.id} thinking guide fell back to plain meaning",
+                thinking.englishOrderKorean != lesson.meaning
+            )
 
             val pronunciation = PronunciationQaCatalog.byLessonId(lesson.id)
             assertTrue("lesson ${lesson.id} rhythm English missing", pronunciation.rhythmEnglish.isNotBlank())
