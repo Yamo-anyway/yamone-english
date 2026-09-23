@@ -118,7 +118,8 @@ object PronunciationQaCatalog {
             Age1113PronunciationQaCatalog.guides +
             Age1416PronunciationQaCatalog.guides +
             Age1416PronunciationQaExpansionCatalog.guides +
-            Age1720PronunciationQaCatalog.guides
+            Age1720PronunciationQaCatalog.guides +
+            Age1720PronunciationQaExpansionCatalog.guides
 
     fun byLessonId(id: Int): PronunciationQaGuide =
         allGuides.firstOrNull { it.lessonId == id }
