@@ -44,7 +44,8 @@ fun EnhancedListenScreen(
     modifier: Modifier = Modifier,
     player: ListeningPlayer,
     speechRate: Float,
-    onMessage: (String) -> Unit
+    onMessage: (String) -> Unit,
+    onReviewResult: (Int, ReviewKind, Boolean) -> Unit
 ) {
     var selectedLessonId by rememberSaveable { mutableIntStateOf(1) }
     var listenModeIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -280,7 +281,14 @@ fun EnhancedListenScreen(
                             val chosen = selectedMeaning == choice
                             val correct = choice == lesson.meaning
                             OutlinedButton(
-                                onClick = { selectedMeaning = choice },
+                                onClick = {
+                                    selectedMeaning = choice
+                                    onReviewResult(
+                                        lesson.id,
+                                        ReviewKind.LISTENING,
+                                        choice == lesson.meaning
+                                    )
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
