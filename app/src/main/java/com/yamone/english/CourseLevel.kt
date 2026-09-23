@@ -11,6 +11,10 @@ enum class CourseLevel(
     AGE_8_10(
         label = "8~10세",
         description = "이유·경험·계획·비교를 말하는 대화"
+    ),
+    AGE_11_13(
+        label = "11~13세",
+        description = "근거·의견·정보 판단·관계·목표를 설명하는 대화"
     )
 }
 
@@ -23,6 +27,7 @@ object CourseCatalog {
     fun sections(course: CourseLevel): List<CourseSection> = when (course) {
         CourseLevel.AGE_5_7 -> Age57CourseSections.sections
         CourseLevel.AGE_8_10 -> Age810CourseSections.sections
+        CourseLevel.AGE_11_13 -> Age1113CourseSections.sections
     }
 
     fun sectionIndexForLesson(course: CourseLevel, lessonId: Int): Int =
