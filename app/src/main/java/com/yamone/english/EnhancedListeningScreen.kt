@@ -49,6 +49,7 @@ fun EnhancedListenScreen(
     var selectedLessonId by rememberSaveable { mutableIntStateOf(1) }
     var listenModeIndex by rememberSaveable { mutableIntStateOf(0) }
     var repeatCount by rememberSaveable { mutableIntStateOf(1) }
+    var voiceModeIndex by rememberSaveable { mutableIntStateOf(0) }
     var drillRate by rememberSaveable { mutableFloatStateOf(speechRate) }
 
     var isPlaying by remember { mutableStateOf(false) }
@@ -64,6 +65,7 @@ fun EnhancedListenScreen(
     val lesson = LessonCatalog.byId(selectedLessonId) ?: LessonCatalog.lessons.first()
     val dialogue = DialogueCatalog.byLessonId(lesson.id)
     val mode = ListenMode.entries[listenModeIndex]
+    val voiceMode = ListenVoiceMode.entries[voiceModeIndex]
     val meaningChoices = remember(lesson.id) { buildMeaningChoices(lesson) }
 
     fun startPlayback(label: String, segments: List<ListeningSegment>, rate: Float = drillRate) {
@@ -74,6 +76,7 @@ fun EnhancedListenScreen(
         player.play(
             newSegments = segments,
             rate = rate,
+            voiceMode = voiceMode,
             onSegmentChanged = { _, segment ->
                 currentSegment = segment
             },
@@ -130,7 +133,7 @@ fun EnhancedListenScreen(
     ) {
         item {
             Text("듣기 훈련", fontSize = 30.sp, fontWeight = FontWeight.Bold)
-            Text("먼저 듣고, 나중에 글자를 확인합니다.")
+            Text("먼저 듣고, 여러 목소리와 실제 속도까지 단계적으로 익힙니다.")
         }
 
         item {
@@ -226,13 +229,34 @@ fun EnhancedListenScreen(
         }
 
         item {
+            Text("목소리", fontWeight = FontWeight.Bold)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(ListenVoiceMode.entries) { item ->
+                    val index = ListenVoiceMode.entries.indexOf(item)
+                    FilterChip(
+                        selected = voiceModeIndex == index,
+                        onClick = {
+                            player.stop()
+                            isPlaying = false
+                            voiceModeIndex = index
+                        },
+                        label = { Text(item.label) }
+                    )
+                }
+            }
+        }
+
+        item {
             Text("속도", fontWeight = FontWeight.Bold)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    0.70f to "천천히",
-                    0.85f to "학습",
-                    1.00f to "자연"
-                ).forEach { pair ->
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(
+                    listOf(
+                        0.70f to "천천히",
+                        0.85f to "학습",
+                        1.00f to "자연",
+                        1.12f to "실제 빠름"
+                    )
+                ) { pair ->
                     FilterChip(
                         selected = drillRate == pair.first,
                         onClick = { drillRate = pair.first },
@@ -293,7 +317,12 @@ fun EnhancedListenScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text("대화 통째로 듣기", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text("6턴 대화를 글자 없이 먼저 들어보세요.")
+                    Text(
+                        if (voiceMode == ListenVoiceMode.DIALOGUE_AB)
+                            "A와 B를 다른 목소리로 들으며 6턴 대화를 익힙니다."
+                        else
+                            "6턴 대화를 글자 없이 먼저 들어보세요."
+                    )
 
                     Button(
                         onClick = { playDialogueOnly() },
