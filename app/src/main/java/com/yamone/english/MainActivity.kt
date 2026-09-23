@@ -162,6 +162,7 @@ private fun YamoneEnglishApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val store = remember { StudyStore(context) }
     val reviewStore = remember { UnifiedReviewStore(context) }
+    val assessmentStore = remember { AssessmentStore(context) }
     val voice = remember { VoiceController(context) }
     val tts = remember { EnglishTts(context) }
     val listeningPlayer = remember { ListeningPlayer(context) }
@@ -170,6 +171,8 @@ private fun YamoneEnglishApp() {
 
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
     var selectedLesson by remember { mutableStateOf<Lesson?>(null) }
+    var showAssessment by rememberSaveable { mutableStateOf(false) }
+    var latestAssessment by remember { mutableStateOf(assessmentStore.latest()) }
     var completed by remember { mutableStateOf(store.completedIds()) }
     var reviewIds by remember { mutableStateOf(store.reviewIds()) }
     var unifiedReviewItems by remember { mutableStateOf(reviewStore.items()) }
@@ -252,6 +255,26 @@ private fun YamoneEnglishApp() {
         }
     }
 
+    if (showAssessment) {
+        Age57AssessmentScreen(
+            isListening = isListening,
+            speak = { tts.speak(it, speechRate) },
+            listen = startListening,
+            onReviewResult = { id, kind, success ->
+                if (success) reviewStore.recordSuccess(id, kind)
+                else reviewStore.recordError(id, kind)
+                unifiedReviewItems = reviewStore.items()
+            },
+            onFinish = { summary ->
+                assessmentStore.save(summary)
+                latestAssessment = assessmentStore.latest()
+                showAssessment = false
+            },
+            onBack = { showAssessment = false }
+        )
+        return
+    }
+
     if (selectedLesson != null) {
         LessonScreen(
             lesson = selectedLesson!!,
@@ -315,7 +338,9 @@ private fun YamoneEnglishApp() {
             AppTab.TODAY -> TodayScreen(
                 modifier = Modifier.padding(padding),
                 completed = completed,
-                onOpenLesson = { selectedLesson = it }
+                latestAssessment = latestAssessment,
+                onOpenLesson = { selectedLesson = it },
+                onOpenAssessment = { showAssessment = true }
             )
             AppTab.LISTEN -> EnhancedListenScreen(
                 modifier = Modifier.padding(padding),
@@ -401,7 +426,9 @@ private fun YamoneEnglishApp() {
 private fun TodayScreen(
     modifier: Modifier = Modifier,
     completed: Set<Int>,
-    onOpenLesson: (Lesson) -> Unit
+    latestAssessment: AssessmentSummary?,
+    onOpenLesson: (Lesson) -> Unit,
+    onOpenAssessment: () -> Unit
 ) {
     val total = LessonCatalog.lessons.size
     val next = LessonCatalog.lessons.firstOrNull { it.id !in completed } ?: LessonCatalog.lessons.last()
@@ -450,6 +477,30 @@ private fun TodayScreen(
                     Text(next.target, fontSize = 18.sp)
                     Spacer(Modifier.height(10.dp))
                     Text("듣기 → 이해 → 말하기 → 내 표현 → 대화")
+                }
+            }
+        }
+
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                onClick = onOpenAssessment,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.padding(18.dp)) {
+                    Text("5~7세 과정 테스트", fontWeight = FontWeight.Bold)
+                    Text("듣기 · 말하기 · 어순 · 상황 대응 16문항")
+                    Spacer(Modifier.height(8.dp))
+                    if (latestAssessment == null) {
+                        Text("100개 레슨을 마친 뒤 실력을 확인해보세요.")
+                    } else {
+                        Text(
+                            "최근 결과 " + latestAssessment.totalCorrect + " / " +
+                                latestAssessment.totalQuestions + " · " + latestAssessment.overallLabel,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
@@ -1173,7 +1224,7 @@ private fun SettingsScreen(
         FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
         HorizontalDivider()
-        Text("Yamone English v0.1.11")
+        Text("Yamone English v0.1.12")
         Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
     }
 }
