@@ -19,9 +19,11 @@ data class UnifiedReviewItem(
 }
 
 class UnifiedReviewStore(context: Context) {
-    private val prefs = context.getSharedPreferences("yamone_english_review", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(PersistenceContract.REVIEW_PREFS, Context.MODE_PRIVATE)
 
     fun recordError(lessonId: Int, kind: ReviewKind) {
+        if (LessonCatalog.byId(lessonId) == null) return
+
         val key = countKey(lessonId, kind)
         val next = prefs.getInt(key, 0) + 1
         prefs.edit()
@@ -31,6 +33,8 @@ class UnifiedReviewStore(context: Context) {
     }
 
     fun recordSuccess(lessonId: Int, kind: ReviewKind) {
+        if (LessonCatalog.byId(lessonId) == null) return
+
         val key = countKey(lessonId, kind)
         val current = prefs.getInt(key, 0)
         if (current <= 0) return
@@ -79,7 +83,12 @@ class UnifiedReviewStore(context: Context) {
         )
     }
 
+    fun items(course: CourseLevel): List<UnifiedReviewItem> =
+        items().filter { LessonCatalog.byId(it.lessonId)?.course == course }
+
     fun dueItems(): List<UnifiedReviewItem> = items().filter { it.isDue }
+
+    fun dueItems(course: CourseLevel): List<UnifiedReviewItem> = items(course).filter { it.isDue }
 
     fun activeLessonIds(): Set<Int> = items().map { it.lessonId }.toSet()
 
