@@ -2,7 +2,7 @@
 
 한국어 사용자를 위한 음성 중심 영어 회화 학습 앱입니다.
 
-## v0.8.4 범위
+## v0.8.5 범위
 
 ### 과정
 - 영어권 5~7세 과정: 100개 레슨
@@ -32,6 +32,16 @@
 - 미국식 실제 회화 기준 발음·연결·강세·억양 가이드
 - 듣기 → 이해 → 말하기 → 내 표현 → 대화 흐름
 - 틀린 듣기·말하기·어순 항목을 통합 자동 복습
+
+### v0.8.5 Play 스토어 제출 준비 2차
+- upload/app-signing keystore, 로컬 `keystore.properties`, 개인키 파일이 Git에 들어가지 않도록 `.gitignore` 강화
+- upload key가 없는 기본 개발/CI 환경에서는 기존처럼 unsigned release를 생성하고, 4개 서명 값이 모두 제공될 때만 upload-key release signing을 활성화하는 조건부 Gradle 구성 추가
+- 로컬 비추적 `keystore.properties` 또는 환경 변수 `YAMONE_UPLOAD_*`를 통해 서명 정보를 주입할 수 있도록 준비
+- CI release artifact sanity check 추가: package `com.yamone.english`, versionCode 33, versionName 0.8.5, minSdk 26, targetSdk 36, `RECORD_AUDIO` 권한과 예상하지 않은 `INTERNET` 권한 부재를 APK에서 자동 검증
+- release AAB 파일이 실제 생성되고 비어 있지 않은지 CI에서 확인
+- `docs/PLAY_SIGNING_INTERNAL_TEST.md`에 upload key 생성·보관·인증서 확인·Play App Signing 역할·서명 AAB·내부 테스트·업데이트 설치 검증 절차 정리
+- `docs/PRIVACY_POLICY_DRAFT.md`에 한국어/영어 공개 개인정보처리방침 초안 추가
+- 실제 키 생성, Play Console 등록, 서명된 AAB 업로드, 내부 테스트 설치, 기기 QA는 자동 완료로 간주하지 않음
 
 ### v0.8.4 Play 스토어 제출 준비 1차
 - 2026-08-31 이후 일반 Android 신규 앱/업데이트의 Google Play 제출 기준에 맞춰 `compileSdk`/`targetSdk`를 Android 16(API 36)으로 상향
@@ -109,13 +119,15 @@
 4. Gradle Sync 후 Android 기기에서 실행합니다.
 5. 첫 음성 입력 때 마이크 권한을 허용합니다.
 
-CI에서는 Android SDK 36 + Gradle 8.11.1 환경에서 `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, `:app:assembleRelease`, `:app:bundleRelease`를 실행해 회귀 테스트·lint·debug APK·unsigned release APK/AAB 컴파일을 확인합니다.
+CI에서는 Android SDK 36 + Gradle 8.11.1 환경에서 `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, `:app:assembleRelease`, `:app:bundleRelease`를 실행하고 release APK/AAB sanity check까지 수행합니다.
 
 > 음성 인식/TTS 서비스 자체는 기기와 서비스 제공자 구현에 따라 네트워크를 사용할 수 있지만, Yamone English 앱 코드는 현재 직접 네트워크 API를 호출하지 않습니다.
 
 ## 스토어 제출 문서
 - [`docs/PLAY_STORE_METADATA.md`](docs/PLAY_STORE_METADATA.md): 한/영 스토어 문구 및 스크린샷 준비 초안
 - [`docs/PRIVACY_DATA_SAFETY.md`](docs/PRIVACY_DATA_SAFETY.md): 개인정보·Data safety 검토 초안
+- [`docs/PRIVACY_POLICY_DRAFT.md`](docs/PRIVACY_POLICY_DRAFT.md): 공개용 한/영 개인정보처리방침 초안
+- [`docs/PLAY_SIGNING_INTERNAL_TEST.md`](docs/PLAY_SIGNING_INTERNAL_TEST.md): upload key·Play App Signing·내부 테스트 실제 작업 체크리스트
 
 ## 출시 전 남은 확인
 실제 기기와 스토어 계정이 필요한 항목은 [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)에 별도로 관리합니다. 자동 CI 성공만으로 실제 기기 테스트, 릴리스 서명, Android developer verification, Play App Signing 또는 Play Console 제출이 완료된 것으로 간주하지 않습니다.
