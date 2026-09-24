@@ -1,6 +1,6 @@
 # Yamone English 출시 후보 체크리스트
 
-v0.8.4 Play 스토어 제출 준비 1차 이후 실제 Android 기기와 스토어 계정에서 확인해야 하는 항목입니다. 체크되지 않은 항목은 자동화 환경에서 실제 테스트·등록·제출했다고 간주하지 않습니다.
+v0.8.5 Play 스토어 제출 준비 2차 이후 실제 Android 기기와 스토어 계정에서 확인해야 하는 항목입니다. 체크되지 않은 항목은 자동화 환경에서 실제 테스트·등록·제출했다고 간주하지 않습니다.
 
 ## 0. 2026 제출 기준 / 높은 우선순위
 - [x] `compileSdk = 36`, `targetSdk = 36`으로 Android 16(API 36) 기준 반영
@@ -15,8 +15,8 @@ v0.8.4 Play 스토어 제출 준비 1차 이후 실제 Android 기기와 스토�
 - Play package registration: https://support.google.com/googleplay/android-developer/answer/16984799
 
 ## 1. 설치 / 업데이트 / 저장 기록
-- [ ] v0.8.4 debug APK 신규 설치 후 5개 과정이 모두 표시된다.
-- [ ] 기존 v0.7.x 또는 v0.8.0~0.8.3 설치 상태 위에 업데이트 설치해 `selected_course`가 유지된다.
+- [ ] v0.8.5 debug APK 신규 설치 후 5개 과정이 모두 표시된다.
+- [ ] 기존 v0.7.x 또는 v0.8.0~0.8.4 설치 상태 위에 업데이트 설치해 `selected_course`가 유지된다.
 - [ ] 업데이트 뒤 `completed`, `review`, `thinking_completed`, `expression_completed`가 유지된다.
 - [ ] 5개 과정의 기존 assessment 결과가 유지되고 손상된 값은 UI를 깨뜨리지 않는다.
 - [ ] 앱 삭제 후 재설치 시 로컬 기록이 초기화되는 현재 정책을 확인한다.
@@ -71,11 +71,12 @@ Android 16 target 변경 참고: https://developer.android.com/about/versions/16
 - [ ] 홈 화면/앱 서랍에서 `Yamone English` 앱 이름이 정상 표시된다.
 - [ ] 일반/원형/adaptive launcher icon이 제조사 런처에서 잘리지 않고 의도한 형태로 보인다.
 - [ ] Android 16 QPR 계열 자동 테마 아이콘 표시를 확인하고 필요 시 monochrome adaptive icon 레이어를 추가한다.
-- [ ] 앱이 요청하는 런타임 권한이 마이크 권한뿐인지 최종 APK/AAB에서 확인한다.
+- [x] CI에서 release APK의 package/version/minSdk/targetSdk/`RECORD_AUDIO`/`INTERNET` 부재를 자동 검증한다.
+- [ ] 실제 서명된 최종 AAB/APK에서도 요청 런타임 권한이 의도와 같은지 다시 확인한다.
 - [ ] 앱 자체가 직접 네트워크 API를 호출하지 않는 현재 버전 정책을 최종 소스와 대조한다.
 - [ ] `allowBackup=false` 정책이 제품 의도와 맞는지 출시 전에 최종 승인한다.
 - [ ] `docs/PRIVACY_DATA_SAFETY.md`의 현재 데이터 흐름을 실제 앱과 최종 대조한다.
-- [ ] 공개 가능한 개인정보처리방침 URL을 준비한다.
+- [ ] `docs/PRIVACY_POLICY_DRAFT.md`의 TODO를 채워 공개 가능한 개인정보처리방침 URL을 준비한다.
 - [ ] 개인정보처리방침에 RECORD_AUDIO 사용 목적과 SpeechRecognizer/TTS가 기기·서비스 제공자에 의해 처리될 수 있음을 반영한다.
 - [ ] Play Console Data safety 문항은 실제 출시 빌드·선택한 음성 서비스 동작·Google Play 정의를 기준으로 최종 답변한다. 저장소 초안을 그대로 제출하지 않는다.
 
@@ -89,22 +90,33 @@ Android 16 target 변경 참고: https://developer.android.com/about/versions/16
 - [ ] 콘텐츠 등급 설문을 실제 앱 기능 기준으로 완료한다.
 
 ## 8. Play App Signing / 릴리스 서명
-현재 CI의 release APK/AAB는 **unsigned 빌드 검증용**이다.
+현재 기본 CI의 release APK/AAB는 **unsigned 빌드 검증용**이다. 실제 작업 순서는 [`docs/PLAY_SIGNING_INTERNAL_TEST.md`](docs/PLAY_SIGNING_INTERNAL_TEST.md)에 상세 정리한다.
+
+### 저장소 보안
+- [x] `*.jks`, `*.keystore`, `keystore.properties`, 개인키 계열 파일을 `.gitignore`에서 제외한다.
+- [x] 키가 없는 환경에서도 unsigned release 빌드가 계속 성공하도록 유지한다.
+- [x] 키가 있을 때만 로컬 비추적 properties 또는 `YAMONE_UPLOAD_*` 환경 변수로 조건부 release signing을 활성화한다.
+- [ ] 실제 비밀번호/keystore가 Git 히스토리나 workflow YAML에 들어가지 않았는지 최초 키 연결 전에 재확인한다.
+
+### 실제 upload key / Play App Signing
 - [ ] Play Console에서 새 앱을 만들고 Play App Signing 상태를 확인한다.
 - [ ] 업로드 키(upload key)용 keystore를 안전한 오프라인/비밀 저장소에 생성한다.
+- [ ] upload key 인증서 유효기간을 Android 공식 릴리스 요구에 맞게 확인한다.
 - [ ] 업로드 키의 alias, 인증서 SHA-256, 백업 위치와 복구 절차를 기록한다. 비밀번호나 keystore 파일은 Git에 커밋하지 않는다.
-- [ ] `bundleRelease` AAB를 업로드 키로 서명한다.
-- [ ] 서명된 AAB/APK의 인증서를 `apksigner`/`keytool` 등으로 검증한다.
+- [ ] `bundleRelease` AAB를 upload key로 서명한다.
+- [ ] 서명된 AAB/APK의 인증서를 `jarsigner`/`apksigner`/`keytool` 등으로 검증한다.
 - [ ] Play Console 내부 테스트 릴리스에 서명된 AAB를 업로드한다.
-- [ ] Play App Signing이 생성/관리하는 app-signing key와 로컬 upload key 역할을 구분해 기록한다.
+- [ ] Play App Signing이 관리하는 app-signing key와 로컬 upload key 역할을 구분해 기록한다.
 - [ ] 최초 open testing/production 롤아웃 전에 Play App Signing 키 정책을 최종 승인한다.
 
-공식 참고: https://support.google.com/googleplay/android-developer/answer/9842756
+공식 참고:
+- https://developer.android.com/studio/publish/app-signing
+- https://support.google.com/googleplay/android-developer/answer/9842756
 
 ## 9. 내부 테스트 / 출시 후보 QA
 - [ ] Play Console 내부 테스트 트랙에서 실제 설치한다.
-- [ ] 내부 테스트에서 v0.8.4 신규 설치 경로를 확인한다.
-- [ ] 이전 내부 테스트 버전에서 v0.8.4로 업데이트해 로컬 기록 호환성을 확인한다.
+- [ ] 내부 테스트에서 v0.8.5 신규 설치 경로를 확인한다.
+- [ ] 이전 내부 테스트 버전에서 v0.8.5로 업데이트해 로컬 기록 호환성을 확인한다.
 - [ ] 최소 1대의 Android 16 휴대폰 또는 에뮬레이터에서 전체 핵심 흐름을 확인한다.
 - [ ] 최소 1대의 대화면/태블릿 Android 16 환경에서 핵심 화면을 확인한다.
 - [ ] Play pre-launch report의 크래시/ANR/접근성/레이아웃 경고를 검토한다.
@@ -124,5 +136,11 @@ CI에서 다음을 자동 확인하도록 구성합니다.
 - Android `lintDebug`
 - debug APK 컴파일 및 패키징
 - unsigned release APK/AAB 컴파일
+- release APK `applicationId=com.yamone.english`
+- release APK `versionCode=33`, `versionName=0.8.5`
+- release APK `minSdk=26`, `targetSdk=36`
+- release APK `RECORD_AUDIO` 권한 존재
+- release APK의 의도하지 않은 `INTERNET` 권한 부재
+- release AAB 생성/비어 있지 않음
 
-실제 기기 동작, 릴리스 서명, Android developer verification, Play App Signing, Data safety 최종 응답, 개인정보처리방침 공개 URL, Play Console 제출은 이 자동화 범위에 포함하지 않습니다.
+실제 기기 동작, 실제 upload key 생성/서명, Android developer verification, Play App Signing, Data safety 최종 응답, 개인정보처리방침 공개 URL, Play Console 내부 테스트/제출은 이 자동화 범위에 포함하지 않습니다.
