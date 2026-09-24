@@ -16,6 +16,7 @@ class VoiceController(private val context: Context) : RecognitionListener {
     private var resultHandler: ((String) -> Unit)? = null
     private var errorHandler: ((String) -> Unit)? = null
     private var active = false
+    private var destroyed = false
 
     init {
         recognizer?.setRecognitionListener(this)
@@ -26,6 +27,11 @@ class VoiceController(private val context: Context) : RecognitionListener {
         onResult: (String) -> Unit,
         onError: (String) -> Unit
     ) {
+        if (destroyed) {
+            onError("음성 인식기를 다시 시작할 수 없습니다. 화면을 다시 열어주세요.")
+            return
+        }
+
         val target = recognizer
         if (target == null) {
             onError("이 기기에서 음성 인식을 사용할 수 없습니다.")
@@ -33,8 +39,8 @@ class VoiceController(private val context: Context) : RecognitionListener {
         }
 
         if (active) {
-            target.cancel()
-            active = false
+            onError("이미 음성 인식을 실행 중입니다.")
+            return
         }
 
         resultHandler = onResult
@@ -59,17 +65,19 @@ class VoiceController(private val context: Context) : RecognitionListener {
     }
 
     fun stop() {
-        if (!active) return
+        if (!active || destroyed) return
         recognizer?.stopListening()
     }
 
     fun cancel() {
-        recognizer?.cancel()
+        if (!destroyed) recognizer?.cancel()
         active = false
         clearHandlers()
     }
 
     fun destroy() {
+        if (destroyed) return
+        destroyed = true
         recognizer?.cancel()
         recognizer?.destroy()
         active = false
@@ -77,6 +85,7 @@ class VoiceController(private val context: Context) : RecognitionListener {
     }
 
     override fun onResults(results: Bundle?) {
+        if (destroyed) return
         active = false
         val onResult = resultHandler
         val onError = errorHandler
@@ -96,6 +105,7 @@ class VoiceController(private val context: Context) : RecognitionListener {
     }
 
     override fun onError(error: Int) {
+        if (destroyed) return
         active = false
         val callback = errorHandler
         clearHandlers()
@@ -132,10 +142,12 @@ class VoiceController(private val context: Context) : RecognitionListener {
 
 class EnglishTts(context: Context) {
     private var ready = false
+    private var released = false
     private var tts: TextToSpeech? = null
 
     init {
         tts = TextToSpeech(context) { status ->
+            if (released) return@TextToSpeech
             ready = status == TextToSpeech.SUCCESS
             if (ready) {
                 val engine = tts
@@ -149,12 +161,14 @@ class EnglishTts(context: Context) {
 
     fun speak(text: String, rate: Float = 0.85f): Boolean {
         val engine = tts ?: return false
-        if (!ready || text.isBlank()) return false
+        if (released || !ready || text.isBlank()) return false
         engine.setSpeechRate(rate.coerceIn(0.5f, 1.2f))
         return engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "yamone-english") != TextToSpeech.ERROR
     }
 
     fun shutdown() {
+        if (released) return
+        released = true
         ready = false
         tts?.stop()
         tts?.shutdown()

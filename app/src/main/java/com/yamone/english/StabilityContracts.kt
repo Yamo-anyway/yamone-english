@@ -50,6 +50,23 @@ object StoredStateSanitizer {
         val validIds = NaturalExpressionCatalog.expressions.mapTo(hashSetOf()) { it.id }
         return ids.intersect(validIds)
     }
+
+    fun validReviewErrorCount(raw: Int): Int = raw.coerceIn(0, 9)
+}
+
+object AssessmentStateSanitizer {
+    fun maxPerCategory(course: CourseLevel): Int = when (course) {
+        CourseLevel.AGE_5_7 -> 4
+        CourseLevel.AGE_8_10 -> 5
+        CourseLevel.AGE_11_13 -> 6
+        CourseLevel.AGE_14_16,
+        CourseLevel.AGE_17_20 -> 7
+    }
+
+    fun score(course: CourseLevel, raw: Int): Int =
+        raw.coerceIn(0, maxPerCategory(course))
+
+    fun hasValidCompletion(completedAt: Long): Boolean = completedAt > 0L
 }
 
 data class CourseProgress(

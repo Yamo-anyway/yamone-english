@@ -132,6 +132,37 @@ class StabilityRegressionTest {
     }
 
     @Test
+    fun corruptReviewCountsAreClamped() {
+        assertEquals(0, StoredStateSanitizer.validReviewErrorCount(-1))
+        assertEquals(0, StoredStateSanitizer.validReviewErrorCount(0))
+        assertEquals(4, StoredStateSanitizer.validReviewErrorCount(4))
+        assertEquals(9, StoredStateSanitizer.validReviewErrorCount(99))
+        assertEquals(9, StoredStateSanitizer.validReviewErrorCount(Int.MAX_VALUE))
+    }
+
+    @Test
+    fun corruptAssessmentScoresAreClampedPerCourse() {
+        val expectedMax = mapOf(
+            CourseLevel.AGE_5_7 to 4,
+            CourseLevel.AGE_8_10 to 5,
+            CourseLevel.AGE_11_13 to 6,
+            CourseLevel.AGE_14_16 to 7,
+            CourseLevel.AGE_17_20 to 7
+        )
+
+        expectedMax.forEach { (course, max) ->
+            assertEquals(max, AssessmentStateSanitizer.maxPerCategory(course))
+            assertEquals(0, AssessmentStateSanitizer.score(course, -100))
+            assertEquals(max, AssessmentStateSanitizer.score(course, 100))
+            assertEquals(max, AssessmentStateSanitizer.score(course, max))
+        }
+
+        assertFalse(AssessmentStateSanitizer.hasValidCompletion(-1L))
+        assertFalse(AssessmentStateSanitizer.hasValidCompletion(0L))
+        assertTrue(AssessmentStateSanitizer.hasValidCompletion(1L))
+    }
+
+    @Test
     fun courseFilteringReturnsOnlySelectedCourseIds() {
         val everyLessonId = LessonCatalog.lessons.map { it.id }.toSet()
 

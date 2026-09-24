@@ -12,8 +12,8 @@ android {
         applicationId = "com.yamone.english"
         minSdk = 26
         targetSdk = 35
-        versionCode = 29
-        versionName = "0.8.1"
+        versionCode = 30
+        versionName = "0.8.2"
     }
 
     compileOptions {
@@ -27,6 +27,16 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
     }
 
     packaging {

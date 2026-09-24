@@ -25,9 +25,10 @@ class UnifiedReviewStore(context: Context) {
         if (LessonCatalog.byId(lessonId) == null) return
 
         val key = countKey(lessonId, kind)
-        val next = prefs.getInt(key, 0) + 1
+        val current = StoredStateSanitizer.validReviewErrorCount(prefs.getInt(key, 0))
+        val next = (current + 1).coerceAtMost(9)
         prefs.edit()
-            .putInt(key, next.coerceAtMost(9))
+            .putInt(key, next)
             .putLong(dueKey(lessonId, kind), System.currentTimeMillis())
             .apply()
     }
@@ -36,7 +37,7 @@ class UnifiedReviewStore(context: Context) {
         if (LessonCatalog.byId(lessonId) == null) return
 
         val key = countKey(lessonId, kind)
-        val current = prefs.getInt(key, 0)
+        val current = StoredStateSanitizer.validReviewErrorCount(prefs.getInt(key, 0))
         if (current <= 0) return
 
         if (current == 1) {
@@ -60,14 +61,16 @@ class UnifiedReviewStore(context: Context) {
 
         return LessonCatalog.lessons.mapNotNull { lesson ->
             val counts = ReviewKind.entries.associateWith { kind ->
-                prefs.getInt(countKey(lesson.id, kind), 0)
+                StoredStateSanitizer.validReviewErrorCount(
+                    prefs.getInt(countKey(lesson.id, kind), 0)
+                )
             }.filterValues { it > 0 }
 
             if (counts.isEmpty()) {
                 null
             } else {
                 val due = counts.keys.minOf { kind ->
-                    prefs.getLong(dueKey(lesson.id, kind), now)
+                    prefs.getLong(dueKey(lesson.id, kind), now).coerceAtLeast(0L)
                 }
                 UnifiedReviewItem(
                     lessonId = lesson.id,

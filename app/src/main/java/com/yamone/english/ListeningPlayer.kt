@@ -102,6 +102,9 @@ class ListeningPlayer(context: Context) {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var tts: TextToSpeech? = null
     private var ready = false
+    private var initFinished = false
+    private var initFailed = false
+    private var released = false
     private var segments: List<ListeningSegment> = emptyList()
     private var index = 0
     private var englishRate = 0.85f
@@ -115,7 +118,10 @@ class ListeningPlayer(context: Context) {
 
     init {
         tts = TextToSpeech(context) { status ->
+            if (released) return@TextToSpeech
+            initFinished = true
             ready = status == TextToSpeech.SUCCESS
+            initFailed = !ready
             if (!ready) {
                 mainHandler.post { onError?.invoke("음성 재생기를 시작할 수 없습니다.") }
                 return@TextToSpeech
@@ -128,7 +134,7 @@ class ListeningPlayer(context: Context) {
 
                 override fun onDone(utteranceId: String?) {
                     val expectedToken = utteranceId?.substringBefore("-")?.toLongOrNull() ?: return
-                    if (expectedToken != token) return
+                    if (released || expectedToken != token) return
 
                     val previousLesson = segments.getOrNull(index)?.lessonId
                     index += 1
@@ -145,8 +151,10 @@ class ListeningPlayer(context: Context) {
                 @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) {
                     mainHandler.post {
-                        this@ListeningPlayer.onError?.invoke("연속 재생 중 음성 출력 오류가 발생했습니다.")
+                        if (released) return@post
+                        val callback = this@ListeningPlayer.onError
                         stop()
+                        callback?.invoke("연속 재생 중 음성 출력 오류가 발생했습니다.")
                     }
                 }
 
@@ -169,9 +177,14 @@ class ListeningPlayer(context: Context) {
         onComplete: () -> Unit,
         onError: (String) -> Unit
     ) {
+        if (released) {
+            onError("음성 재생기가 종료되었습니다. 화면을 다시 열어주세요.")
+            return
+        }
+
         stopInternal(clearCallbacks = false)
         token += 1
-        segments = newSegments
+        segments = newSegments.filter { it.text.isNotBlank() }
         index = 0
         englishRate = rate
         this.voiceMode = voiceMode
@@ -180,13 +193,19 @@ class ListeningPlayer(context: Context) {
         this.onError = onError
 
         if (segments.isEmpty()) {
-            onComplete()
+            val completed = this.onComplete
+            stopInternal(clearCallbacks = true)
+            completed?.invoke()
             return
         }
 
         if (ready) {
             refreshVoices()
             speakCurrent(token)
+        } else if (initFinished && initFailed) {
+            val callback = this.onError
+            stopInternal(clearCallbacks = true)
+            callback?.invoke("음성 재생기를 시작할 수 없습니다. 기기의 TTS 설정을 확인해 주세요.")
         }
     }
 
@@ -196,6 +215,7 @@ class ListeningPlayer(context: Context) {
 
     private fun stopInternal(clearCallbacks: Boolean) {
         token += 1
+        mainHandler.removeCallbacksAndMessages(null)
         tts?.stop()
         segments = emptyList()
         index = 0
@@ -227,7 +247,7 @@ class ListeningPlayer(context: Context) {
     }
 
     private fun speakCurrent(expectedToken: Long) {
-        if (expectedToken != token) return
+        if (released || expectedToken != token) return
 
         val segment = segments.getOrNull(index)
         if (segment == null) {
@@ -237,7 +257,12 @@ class ListeningPlayer(context: Context) {
             return
         }
 
-        val engine = tts ?: return
+        val engine = tts ?: run {
+            val callback = onError
+            stopInternal(clearCallbacks = true)
+            callback?.invoke("음성 재생기를 사용할 수 없습니다.")
+            return
+        }
         val locale = Locale.forLanguageTag(segment.languageTag)
         val languageResult = engine.setLanguage(locale)
 
@@ -245,11 +270,14 @@ class ListeningPlayer(context: Context) {
             languageResult == TextToSpeech.LANG_MISSING_DATA ||
             languageResult == TextToSpeech.LANG_NOT_SUPPORTED
         ) {
-            onError?.invoke(
-                if (segment.languageTag.startsWith("ko")) "기기에 한국어 TTS 음성이 없습니다."
-                else "기기에 영어 TTS 음성이 없습니다."
-            )
-            stop()
+            val callback = onError
+            val message = if (segment.languageTag.startsWith("ko")) {
+                "기기에 한국어 TTS 음성이 없습니다."
+            } else {
+                "기기에 영어 TTS 음성이 없습니다."
+            }
+            stopInternal(clearCallbacks = true)
+            callback?.invoke(message)
             return
         }
 
@@ -264,12 +292,17 @@ class ListeningPlayer(context: Context) {
 
         mainHandler.post { onSegmentChanged?.invoke(index, segment) }
 
-        engine.speak(
+        val result = engine.speak(
             segment.text,
             TextToSpeech.QUEUE_FLUSH,
             null,
             expectedToken.toString() + "-" + index
         )
+        if (result == TextToSpeech.ERROR) {
+            val callback = onError
+            stopInternal(clearCallbacks = true)
+            callback?.invoke("음성 출력을 시작할 수 없습니다.")
+        }
     }
 
     private fun configureEnglishVoice(engine: TextToSpeech, segment: ListeningSegment) {
@@ -310,8 +343,11 @@ class ListeningPlayer(context: Context) {
     }
 
     fun shutdown() {
-        stop()
+        if (released) return
+        released = true
+        stopInternal(clearCallbacks = true)
         tts?.shutdown()
         tts = null
+        ready = false
     }
 }
