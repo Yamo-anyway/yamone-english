@@ -4,13 +4,13 @@
 
 ## 1. 현재 코드 기준 데이터 흐름 요약
 
-현재 Yamone English v0.8.4는 로그인, 광고 SDK, 분석 SDK, 자체 서버 API, 온라인 AI API를 활성화하지 않습니다. 앱 코드가 직접 운영 서버로 학습 데이터를 전송하는 네트워크 경로도 현재 없습니다.
+현재 Yamone English v0.8.5는 로그인, 광고 SDK, 분석 SDK, 자체 서버 API, 온라인 AI API를 활성화하지 않습니다. 앱 코드가 직접 운영 서버로 학습 데이터를 전송하는 네트워크 경로도 현재 없습니다.
 
 AndroidManifest의 런타임 민감 권한은 다음과 같습니다.
 
 - `android.permission.RECORD_AUDIO`
 
-앱의 직접 `INTERNET` 권한은 현재 선언하지 않습니다.
+앱의 직접 `INTERNET` 권한은 현재 선언하지 않습니다. CI는 release APK에서 `RECORD_AUDIO` 존재와 예상하지 않은 `INTERNET` 권한 부재를 자동 확인합니다.
 
 ## 2. 기기 내부에 저장되는 정보
 
@@ -114,13 +114,13 @@ Google Play Data safety의 `수집(collect)`/`공유(share)` 여부는 Google Pl
 - 사용자는 Android 앱 데이터 삭제 또는 앱 제거로 로컬 학습 기록을 제거할 수 있음
 - `allowBackup=false`로 OS 백업 복원은 현재 차단
 - 원본 음성 파일을 앱이 지속적으로 저장하지 않음
-- keystore/서명키는 저장소에 포함하지 않아야 함
+- keystore/서명키/비밀번호는 `.gitignore`와 조건부 서명 구성으로 저장소에 포함하지 않는 정책
 
 향후 서버/계정 기능이 추가되면 보존기간, 삭제 요청, 전송 암호화, 서버 위치, 국외 이전 여부 등을 별도로 정의해야 합니다.
 
-## 8. 공개 개인정보처리방침에 포함할 내용 초안
+## 8. 공개 개인정보처리방침
 
-실제 공개 정책에는 최소한 다음 내용을 제품 운영 주체 정보와 함께 작성해야 합니다.
+공개용 한/영 초안은 `PRIVACY_POLICY_DRAFT.md`에 별도로 관리합니다. 실제 공개 전에 최소 다음 내용을 제품 운영 주체 정보와 함께 확정해야 합니다.
 
 1. 앱이 제공하는 서비스 개요
 2. 기기 내부에 저장되는 학습 진행/설정 정보
@@ -131,9 +131,9 @@ Google Play Data safety의 `수집(collect)`/`공유(share)` 여부는 Google Pl
 7. 앱 삭제/앱 데이터 삭제를 통한 로컬 기록 삭제 방법
 8. 문의처 및 개인정보 관련 연락 수단
 9. 정책 시행일/변경 이력
-10. 향후 온라인 기능이 추가될 경우 정책이 변경될 수 있다는 안내
+10. 실제 Play 대상 연령과 Families 정책 적용 여부
 
-이 문서를 그대로 공개 개인정보처리방침으로 사용하지 말고, 실제 개발자/사업자 정보와 연락처를 넣은 별도 공개 문서를 만들어 URL로 제공해야 합니다.
+`PRIVACY_POLICY_DRAFT.md`의 TODO 운영자명, 이메일, 공개 URL, 시행일을 채우기 전에는 공개 완료로 간주하지 않습니다.
 
 ## 9. Play Console Data safety 최종 작성 체크리스트
 
@@ -163,10 +163,12 @@ Google Play Data safety의 `수집(collect)`/`공유(share)` 여부는 Google Pl
 
 ## 11. 현재 결론
 
-v0.8.4 기준으로 Yamone English는 **로컬 학습 기록 + Android 플랫폼 음성 서비스** 중심 구조입니다. 자체 네트워크 API가 없다는 점은 소스 기준으로 확인되지만, SpeechRecognizer/TTS 서비스 제공자의 처리까지 포함해 “어떠한 데이터도 외부 처리되지 않는다”고 단정해서는 안 됩니다.
+v0.8.5 기준으로 Yamone English는 **로컬 학습 기록 + Android 플랫폼 음성 서비스** 중심 구조입니다. 자체 네트워크 API가 없다는 점은 소스/릴리스 권한 검증 기준으로 확인하지만, SpeechRecognizer/TTS 서비스 제공자의 처리까지 포함해 “어떠한 데이터도 외부 처리되지 않는다”고 단정해서는 안 됩니다.
 
 따라서 Play Console Data safety와 공개 개인정보처리방침은 **실제 출시 환경 확인 후 최종 확정**합니다.
 
 관련 문서:
 - `PLAY_STORE_METADATA.md`
+- `PRIVACY_POLICY_DRAFT.md`
+- `PLAY_SIGNING_INTERNAL_TEST.md`
 - `../RELEASE_CHECKLIST.md`
