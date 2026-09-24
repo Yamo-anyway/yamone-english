@@ -2,7 +2,7 @@
 
 한국어 사용자를 위한 음성 중심 영어 회화 학습 앱입니다.
 
-## v0.8.3 범위
+## v0.8.4 범위
 
 ### 과정
 - 영어권 5~7세 과정: 100개 레슨
@@ -32,6 +32,24 @@
 - 미국식 실제 회화 기준 발음·연결·강세·억양 가이드
 - 듣기 → 이해 → 말하기 → 내 표현 → 대화 흐름
 - 틀린 듣기·말하기·어순 항목을 통합 자동 복습
+
+### v0.8.4 Play 스토어 제출 준비 1차
+- 2026-08-31 이후 일반 Android 신규 앱/업데이트의 Google Play 제출 기준에 맞춰 `compileSdk`/`targetSdk`를 Android 16(API 36)으로 상향
+- API 36을 공식 지원하는 Android Gradle Plugin 8.10.1과 Gradle 8.11.1로 보수적으로 업그레이드
+- JDK 17, Kotlin 2.0.21, Compose 플러그인/기존 의존성 구조는 유지
+- CI에서 Android 16 SDK를 명시적으로 설치하고 unit/regression test, lint, debug APK, unsigned release APK/AAB를 모두 검증
+- Android 16의 edge-to-edge, predictive back, 대화면 orientation/resizability 변경을 코드 기준으로 점검
+- 현재 앱은 edge-to-edge opt-out을 사용하지 않고 Compose `Scaffold` inset 구조와 `BackHandler`를 사용하며, orientation/resizability 제한도 선언하지 않음
+- Play 제출용 메타데이터 초안과 개인정보/Data safety 검토 문서를 `docs/`에 추가
+- Android developer verification과 Play App Signing을 실제 계정에서 확인해야 하는 항목으로 출시 체크리스트에 반영
+- 릴리스 서명, Play Console 제출, 실제 기기 QA는 자동 완료로 간주하지 않음
+
+공식 참고:
+- Google Play target API 정책: https://support.google.com/googleplay/android-developer/answer/11926878
+- AGP 8.10 호환성: https://developer.android.com/build/releases/agp-8-10-0-release-notes
+- Android 16 target 동작 변경: https://developer.android.com/about/versions/16/behavior-changes-16
+- Android developer verification: https://developer.android.com/developer-verification
+- Play App Signing: https://support.google.com/googleplay/android-developer/answer/9842756
 
 ### v0.8.3 출시 후보(RC) 코드 점검 2차
 - 설정 화면의 버전 표기를 `BuildConfig.VERSION_NAME`에서 가져와 앱 버전과 자동으로 일치하도록 변경
@@ -87,12 +105,17 @@
 ## 실행
 1. Android Studio에서 저장소를 엽니다.
 2. JDK 17을 사용합니다.
-3. Gradle Sync 후 Android 기기에서 실행합니다.
-4. 첫 음성 입력 때 마이크 권한을 허용합니다.
+3. Android 16(API 36) SDK가 설치되어 있는지 확인합니다.
+4. Gradle Sync 후 Android 기기에서 실행합니다.
+5. 첫 음성 입력 때 마이크 권한을 허용합니다.
 
-CI에서는 `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, `:app:assembleRelease`, `:app:bundleRelease`를 실행해 회귀 테스트·lint·debug APK·unsigned release APK/AAB 컴파일을 확인합니다.
+CI에서는 Android SDK 36 + Gradle 8.11.1 환경에서 `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, `:app:assembleRelease`, `:app:bundleRelease`를 실행해 회귀 테스트·lint·debug APK·unsigned release APK/AAB 컴파일을 확인합니다.
 
-> 음성 인식 서비스 자체는 기기/서비스 상태에 따라 네트워크를 사용할 수 있지만, Yamone English 앱은 현재 직접 네트워크 API를 호출하지 않습니다.
+> 음성 인식/TTS 서비스 자체는 기기와 서비스 제공자 구현에 따라 네트워크를 사용할 수 있지만, Yamone English 앱 코드는 현재 직접 네트워크 API를 호출하지 않습니다.
+
+## 스토어 제출 문서
+- [`docs/PLAY_STORE_METADATA.md`](docs/PLAY_STORE_METADATA.md): 한/영 스토어 문구 및 스크린샷 준비 초안
+- [`docs/PRIVACY_DATA_SAFETY.md`](docs/PRIVACY_DATA_SAFETY.md): 개인정보·Data safety 검토 초안
 
 ## 출시 전 남은 확인
-실제 기기와 스토어 계정이 필요한 항목은 [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)에 별도로 관리합니다. 자동 CI 성공만으로 실제 기기 테스트, 릴리스 서명, Play Console 설정이 완료된 것으로 간주하지 않습니다.
+실제 기기와 스토어 계정이 필요한 항목은 [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)에 별도로 관리합니다. 자동 CI 성공만으로 실제 기기 테스트, 릴리스 서명, Android developer verification, Play App Signing 또는 Play Console 제출이 완료된 것으로 간주하지 않습니다.

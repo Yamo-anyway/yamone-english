@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "com.yamone.english"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.yamone.english"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 31
-        versionName = "0.8.3"
+        targetSdk = 36
+        versionCode = 32
+        versionName = "0.8.4"
     }
 
     compileOptions {
