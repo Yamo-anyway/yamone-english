@@ -71,6 +71,67 @@ class StabilityRegressionTest {
     }
 
     @Test
+    fun homeFlowStopsShowingContinueAfterOneHundredLessons() {
+        CourseLevel.entries.forEach { course ->
+            val lessons = CourseCatalog.lessons(course).sortedBy { it.courseLessonNumber }
+
+            val before = CourseProgressResolver.homeState(
+                course = course,
+                completedIds = lessons.take(99).map { it.id }.toSet(),
+                hasAssessmentResult = false
+            )
+            assertTrue(before.shouldShowContinueLesson)
+            assertFalse(before.shouldPromoteAssessment)
+            assertEquals(100, before.progress.nextLesson?.courseLessonNumber)
+
+            val complete = CourseProgressResolver.homeState(
+                course = course,
+                completedIds = lessons.map { it.id }.toSet(),
+                hasAssessmentResult = false
+            )
+            assertFalse(complete.shouldShowContinueLesson)
+            assertTrue(complete.shouldPromoteAssessment)
+            assertNull(complete.progress.nextLesson)
+
+            val revisit = CourseProgressResolver.homeState(
+                course = course,
+                completedIds = lessons.take(40).map { it.id }.toSet(),
+                hasAssessmentResult = true
+            )
+            assertTrue(revisit.assessmentIsRevisit)
+            assertFalse(revisit.shouldPromoteAssessment)
+        }
+    }
+
+    @Test
+    fun staleOrForeignStoredLessonIdsAreIgnoredSafely() {
+        val valid = LessonCatalog.lessons.take(4).map { it.id }.toSet()
+        val raw = valid + setOf(-1, 0, 999_999)
+        val sanitized = StoredStateSanitizer.validLessonIds(raw)
+
+        assertEquals(valid, sanitized)
+        assertFalse(-1 in sanitized)
+        assertFalse(999_999 in sanitized)
+
+        CourseLevel.entries.forEach { course ->
+            val own = CourseCatalog.lessons(course).take(3).map { it.id }.toSet()
+            val foreign = LessonCatalog.lessons.first { it.course != course }.id
+            val filtered = CourseProgressResolver.completedIds(
+                course,
+                own + foreign + setOf(999_999)
+            )
+            assertEquals(own, filtered)
+        }
+    }
+
+    @Test
+    fun expressionStateSanitizerIgnoresUnknownIds() {
+        val valid = NaturalExpressionCatalog.expressions.take(3).map { it.id }.toSet()
+        val sanitized = StoredStateSanitizer.validExpressionIds(valid + setOf(-10, 999_999))
+        assertEquals(valid, sanitized)
+    }
+
+    @Test
     fun courseFilteringReturnsOnlySelectedCourseIds() {
         val everyLessonId = LessonCatalog.lessons.map { it.id }.toSet()
 
