@@ -39,6 +39,19 @@ object PersistenceContract {
     }
 }
 
+object StoredStateSanitizer {
+    private val validLessonIds: Set<Int> by lazy {
+        LessonCatalog.lessons.mapTo(hashSetOf()) { it.id }
+    }
+
+    fun validLessonIds(ids: Set<Int>): Set<Int> = ids.intersect(validLessonIds)
+
+    fun validExpressionIds(ids: Set<Int>): Set<Int> {
+        val validIds = NaturalExpressionCatalog.expressions.mapTo(hashSetOf()) { it.id }
+        return ids.intersect(validIds)
+    }
+}
+
 data class CourseProgress(
     val course: CourseLevel,
     val totalLessons: Int,
@@ -52,11 +65,25 @@ data class CourseProgress(
         get() = (totalLessons - completedLessons).coerceAtLeast(0)
 }
 
+data class HomeFlowState(
+    val progress: CourseProgress,
+    val hasAssessmentResult: Boolean
+) {
+    val shouldShowContinueLesson: Boolean
+        get() = !progress.isComplete && progress.nextLesson != null
+
+    val shouldPromoteAssessment: Boolean
+        get() = progress.isComplete
+
+    val assessmentIsRevisit: Boolean
+        get() = hasAssessmentResult
+}
+
 object CourseProgressResolver {
     fun resolve(course: CourseLevel, completedIds: Set<Int>): CourseProgress {
         val lessons = CourseCatalog.lessons(course).sortedBy { it.courseLessonNumber }
         val courseIds = lessons.mapTo(linkedSetOf()) { it.id }
-        val completedInCourse = completedIds.intersect(courseIds)
+        val completedInCourse = StoredStateSanitizer.validLessonIds(completedIds).intersect(courseIds)
         val next = lessons.firstOrNull { it.id !in completedInCourse }
 
         return CourseProgress(
@@ -69,6 +96,15 @@ object CourseProgressResolver {
 
     fun completedIds(course: CourseLevel, completedIds: Set<Int>): Set<Int> {
         val courseIds = CourseCatalog.lessons(course).mapTo(hashSetOf()) { it.id }
-        return completedIds.intersect(courseIds)
+        return StoredStateSanitizer.validLessonIds(completedIds).intersect(courseIds)
     }
+
+    fun homeState(
+        course: CourseLevel,
+        completedIds: Set<Int>,
+        hasAssessmentResult: Boolean
+    ): HomeFlowState = HomeFlowState(
+        progress = resolve(course, completedIds),
+        hasAssessmentResult = hasAssessmentResult
+    )
 }
