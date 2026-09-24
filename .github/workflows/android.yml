@@ -42,6 +42,31 @@ jobs:
       - name: Build unsigned release AAB
         run: gradle :app:bundleRelease --stacktrace
 
+      - name: Sanity-check release artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          RELEASE_APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          RELEASE_AAB="app/build/outputs/bundle/release/app-release.aab"
+
+          test -n "$RELEASE_APK"
+          test -s "$RELEASE_APK"
+          test -s "$RELEASE_AAB"
+
+          BADGING="$($AAPT dump badging "$RELEASE_APK")"
+          printf '%s\n' "$BADGING"
+
+          grep -Fq "package: name='com.yamone.english' versionCode='33' versionName='0.8.5'" <<<"$BADGING"
+          grep -Fq "sdkVersion:'26'" <<<"$BADGING"
+          grep -Fq "targetSdkVersion:'36'" <<<"$BADGING"
+          grep -Fq "uses-permission: name='android.permission.RECORD_AUDIO'" <<<"$BADGING"
+
+          if grep -Fq "android.permission.INTERNET" <<<"$BADGING"; then
+            echo "Unexpected INTERNET permission in release APK" >&2
+            exit 1
+          fi
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
