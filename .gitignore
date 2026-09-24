@@ -8,3 +8,13 @@
 .externalNativeBuild
 .cxx
 app/build
+
+# Release signing material — never commit upload/app-signing keys or passwords.
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.key
+keystore.properties
+signing.properties
+/upload-keystore/
