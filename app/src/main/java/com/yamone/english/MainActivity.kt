@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -195,7 +196,7 @@ private fun YamoneEnglishApp() {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    var tabIndex by rememberSaveable { mutableIntStateOf(0) }
+    var tabIndex by rememberSaveable { mutableIntStateOf(AppTab.TODAY.ordinal) }
     var selectedCourse by rememberSaveable { mutableStateOf(store.selectedCourse()) }
     var selectedLesson by remember { mutableStateOf<Lesson?>(null) }
     var showAssessment by rememberSaveable { mutableStateOf(false) }
@@ -221,6 +222,23 @@ private fun YamoneEnglishApp() {
         )
     }
     var pendingVoiceAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    val safeTabIndex = AppNavigationState.sanitizeTabIndex(tabIndex, AppTab.entries.size)
+
+    LaunchedEffect(tabIndex, safeTabIndex) {
+        if (tabIndex != safeTabIndex) tabIndex = safeTabIndex
+    }
+
+    BackHandler(
+        enabled = showSettings || showAssessment || selectedLesson != null || safeTabIndex != AppTab.TODAY.ordinal
+    ) {
+        when {
+            showSettings -> showSettings = false
+            showAssessment -> showAssessment = false
+            selectedLesson != null -> selectedLesson = null
+            else -> tabIndex = AppTab.TODAY.ordinal
+        }
+    }
 
     val showMessage: (String) -> Unit = { message ->
         scope.launch { snackbarHostState.showSnackbar(message) }
@@ -440,7 +458,7 @@ private fun YamoneEnglishApp() {
             NavigationBar {
                 AppTab.entries.forEachIndexed { index, tab ->
                     NavigationBarItem(
-                        selected = tabIndex == index,
+                        selected = safeTabIndex == index,
                         onClick = { tabIndex = index },
                         icon = {
                             Icon(
@@ -460,7 +478,7 @@ private fun YamoneEnglishApp() {
             }
         }
     ) { padding ->
-        when (AppTab.entries[tabIndex]) {
+        when (AppTab.entries[safeTabIndex]) {
             AppTab.TODAY -> TodayScreen(
                 modifier = Modifier.padding(padding),
                 course = selectedCourse,
@@ -1304,7 +1322,7 @@ private fun SettingsScreen(
             FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
 
             HorizontalDivider()
-            Text("Yamone English v0.8.1")
+            Text("Yamone English v${BuildConfig.VERSION_NAME}")
             Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
         }
     }

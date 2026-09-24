@@ -2,7 +2,7 @@
 
 한국어 사용자를 위한 음성 중심 영어 회화 학습 앱입니다.
 
-## v0.8.2 범위
+## v0.8.3 범위
 
 ### 과정
 - 영어권 5~7세 과정: 100개 레슨
@@ -32,6 +32,15 @@
 - 미국식 실제 회화 기준 발음·연결·강세·억양 가이드
 - 듣기 → 이해 → 말하기 → 내 표현 → 대화 흐름
 - 틀린 듣기·말하기·어순 항목을 통합 자동 복습
+
+### v0.8.3 출시 후보(RC) 코드 점검 2차
+- 설정 화면의 버전 표기를 `BuildConfig.VERSION_NAME`에서 가져와 앱 버전과 자동으로 일치하도록 변경
+- 복원된 탭 인덱스가 손상되어도 오늘 탭으로 안전하게 보정하도록 내비게이션 상태 방어 추가
+- 시스템 뒤로가기에서 설정·과정 테스트·레슨을 먼저 닫고, 일반 보조 탭에서는 오늘 탭으로 복귀하도록 `BackHandler` 적용
+- 앱 이름을 문자열 리소스로 이동하고 launcher/adaptive icon 최소 출시 리소스 추가
+- Manifest에서 정식 앱 이름, 일반/원형 launcher icon을 사용하도록 변경
+- `lintDebug`를 CI에 추가하고 debug APK와 함께 unsigned release APK/AAB도 컴파일하도록 강화
+- 릴리스 서명키나 Play Console, 실제 기기 수동 테스트는 자동 완료로 간주하지 않음
 
 ### v0.8.2 출시 후보(RC) 코드 점검 1차
 - 앱이 직접 네트워크 통신을 사용하지 않는 현재 구조에 맞춰 불필요한 `INTERNET` 권한 제거
@@ -65,7 +74,7 @@
 - 저장소/저장 키 이름이 과거 버전과 동일한지 회귀 검사
 - 99/100과 100/100 홈 흐름을 5개 과정 모두 회귀 검사
 - 손상된 평가 점수와 복습 오류 횟수 보정 로직 회귀 검사
-- 선택 과정 이외의 레슨이 진행률에 섞이지 않는지 회귀 검사
+- 비정상 탭 복원값과 보조 탭 뒤로가기 목표를 순수 로직으로 회귀 검사
 
 ### 공통
 - Android 기본 TTS(TextToSpeech) 영어 듣기
@@ -81,9 +90,9 @@
 3. Gradle Sync 후 Android 기기에서 실행합니다.
 4. 첫 음성 입력 때 마이크 권한을 허용합니다.
 
-CI에서는 `:app:testDebugUnitTest`로 카탈로그·과정 분리·저장 키·홈 완료 흐름·손상 상태 회귀 테스트를 실행한 뒤 `:app:assembleDebug`로 APK를 빌드합니다.
+CI에서는 `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, `:app:assembleRelease`, `:app:bundleRelease`를 실행해 회귀 테스트·lint·debug APK·unsigned release APK/AAB 컴파일을 확인합니다.
 
 > 음성 인식 서비스 자체는 기기/서비스 상태에 따라 네트워크를 사용할 수 있지만, Yamone English 앱은 현재 직접 네트워크 API를 호출하지 않습니다.
 
 ## 출시 전 남은 확인
-실제 기기와 스토어 계정이 필요한 항목은 [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)에 별도로 관리합니다. 자동 CI 성공만으로 실제 기기 테스트가 완료된 것으로 간주하지 않습니다.
+실제 기기와 스토어 계정이 필요한 항목은 [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)에 별도로 관리합니다. 자동 CI 성공만으로 실제 기기 테스트, 릴리스 서명, Play Console 설정이 완료된 것으로 간주하지 않습니다.

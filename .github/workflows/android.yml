@@ -22,14 +22,32 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Run catalog integrity tests
+      - name: Run unit and regression tests
         run: gradle :app:testDebugUnitTest --stacktrace
+
+      - name: Run Android lint
+        run: gradle :app:lintDebug --stacktrace
 
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
+
+      - name: Build unsigned release APK
+        run: gradle :app:assembleRelease --stacktrace
+
+      - name: Build unsigned release AAB
+        run: gradle :app:bundleRelease --stacktrace
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: yamone-english-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload unsigned release outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: yamone-english-release-unsigned
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
