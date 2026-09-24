@@ -100,72 +100,83 @@ private enum class AppTab(val label: String) {
 }
 
 private class StudyStore(context: Context) {
-    private val prefs = context.getSharedPreferences("yamone_english", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(PersistenceContract.STUDY_PREFS, Context.MODE_PRIVATE)
 
-    fun completedIds(): Set<Int> =
-        prefs.getStringSet("completed", emptySet()).orEmpty().mapNotNull { it.toIntOrNull() }.toSet()
+    private fun storedLessonIds(key: String): Set<Int> =
+        StoredStateSanitizer.validLessonIds(
+            prefs.getStringSet(key, emptySet()).orEmpty().mapNotNull { it.toIntOrNull() }.toSet()
+        )
 
-    fun reviewIds(): Set<Int> =
-        prefs.getStringSet("review", emptySet()).orEmpty().mapNotNull { it.toIntOrNull() }.toSet()
+    fun completedIds(): Set<Int> = storedLessonIds(PersistenceContract.KEY_COMPLETED)
+
+    fun reviewIds(): Set<Int> = storedLessonIds(PersistenceContract.KEY_REVIEW)
 
     fun markCompleted(id: Int) {
+        if (LessonCatalog.byId(id) == null) return
         val next = completedIds().toMutableSet().apply { add(id) }
-        prefs.edit().putStringSet("completed", next.map { it.toString() }.toSet()).apply()
+        prefs.edit()
+            .putStringSet(PersistenceContract.KEY_COMPLETED, next.map { it.toString() }.toSet())
+            .apply()
     }
 
     fun addReview(id: Int) {
+        if (LessonCatalog.byId(id) == null) return
         val next = reviewIds().toMutableSet().apply { add(id) }
-        prefs.edit().putStringSet("review", next.map { it.toString() }.toSet()).apply()
+        prefs.edit()
+            .putStringSet(PersistenceContract.KEY_REVIEW, next.map { it.toString() }.toSet())
+            .apply()
     }
 
     fun clearReview(id: Int) {
         val next = reviewIds().toMutableSet().apply { remove(id) }
-        prefs.edit().putStringSet("review", next.map { it.toString() }.toSet()).apply()
+        prefs.edit()
+            .putStringSet(PersistenceContract.KEY_REVIEW, next.map { it.toString() }.toSet())
+            .apply()
     }
 
     fun thinkingCompletedIds(): Set<Int> =
-        prefs.getStringSet("thinking_completed", emptySet()).orEmpty()
-            .mapNotNull { it.toIntOrNull() }
-            .toSet()
+        storedLessonIds(PersistenceContract.KEY_THINKING_COMPLETED)
 
     fun markThinkingCompleted(id: Int) {
+        if (LessonCatalog.byId(id) == null) return
         val next = thinkingCompletedIds().toMutableSet().apply { add(id) }
         prefs.edit()
-            .putStringSet("thinking_completed", next.map { it.toString() }.toSet())
+            .putStringSet(PersistenceContract.KEY_THINKING_COMPLETED, next.map { it.toString() }.toSet())
             .apply()
     }
 
     fun expressionCompletedIds(): Set<Int> =
-        prefs.getStringSet("expression_completed", emptySet()).orEmpty()
+        prefs.getStringSet(PersistenceContract.KEY_EXPRESSION_COMPLETED, emptySet()).orEmpty()
             .mapNotNull { it.toIntOrNull() }
             .toSet()
 
     fun markExpressionCompleted(id: Int) {
+        if (NaturalExpressionCatalog.expressions.none { it.id == id }) return
         val next = expressionCompletedIds().toMutableSet().apply { add(id) }
         prefs.edit()
-            .putStringSet("expression_completed", next.map { it.toString() }.toSet())
+            .putStringSet(PersistenceContract.KEY_EXPRESSION_COMPLETED, next.map { it.toString() }.toSet())
             .apply()
     }
 
-    fun speechRate(): Float = prefs.getFloat("speech_rate", 0.85f)
-    fun setSpeechRate(value: Float) = prefs.edit().putFloat("speech_rate", value).apply()
+    fun speechRate(): Float = prefs.getFloat(PersistenceContract.KEY_SPEECH_RATE, 0.85f)
+    fun setSpeechRate(value: Float) = prefs.edit().putFloat(PersistenceContract.KEY_SPEECH_RATE, value).apply()
 
-    fun showKorean(): Boolean = prefs.getBoolean("show_korean", true)
-    fun setShowKorean(value: Boolean) = prefs.edit().putBoolean("show_korean", value).apply()
+    fun showKorean(): Boolean = prefs.getBoolean(PersistenceContract.KEY_SHOW_KOREAN, true)
+    fun setShowKorean(value: Boolean) = prefs.edit().putBoolean(PersistenceContract.KEY_SHOW_KOREAN, value).apply()
 
-    fun showSoundGuide(): Boolean = prefs.getBoolean("show_sound_guide", true)
-    fun setShowSoundGuide(value: Boolean) = prefs.edit().putBoolean("show_sound_guide", value).apply()
+    fun showSoundGuide(): Boolean = prefs.getBoolean(PersistenceContract.KEY_SHOW_SOUND_GUIDE, true)
+    fun setShowSoundGuide(value: Boolean) = prefs.edit().putBoolean(PersistenceContract.KEY_SHOW_SOUND_GUIDE, value).apply()
 
     fun selectedCourse(): CourseLevel =
         runCatching {
             CourseLevel.valueOf(
-                prefs.getString("selected_course", CourseLevel.AGE_5_7.name)
+                prefs.getString(PersistenceContract.KEY_SELECTED_COURSE, CourseLevel.AGE_5_7.name)
                     ?: CourseLevel.AGE_5_7.name
             )
         }.getOrDefault(CourseLevel.AGE_5_7)
 
     fun setSelectedCourse(value: CourseLevel) =
-        prefs.edit().putString("selected_course", value.name).apply()
+        prefs.edit().putString(PersistenceContract.KEY_SELECTED_COURSE, value.name).apply()
 }
 
 @Composable
@@ -211,6 +222,16 @@ private fun YamoneEnglishApp() {
     }
     var pendingVoiceAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
+    val showMessage: (String) -> Unit = { message ->
+        scope.launch { snackbarHostState.showSnackbar(message) }
+    }
+
+    val speakEnglish: (String) -> Unit = { text ->
+        if (!tts.speak(text, speechRate)) {
+            showMessage("영어 음성을 재생할 수 없습니다. 기기의 TTS 영어 음성 데이터를 확인해 주세요.")
+        }
+    }
+
     val micLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -218,7 +239,7 @@ private fun YamoneEnglishApp() {
         if (granted) pendingVoiceAction?.invoke()
         pendingVoiceAction = null
         if (!granted) {
-            scope.launch { snackbarHostState.showSnackbar("말하기 연습에는 마이크 권한이 필요합니다.") }
+            showMessage("말하기 연습에는 마이크 권한이 필요합니다.")
         }
     }
 
@@ -233,7 +254,7 @@ private fun YamoneEnglishApp() {
                 },
                 onError = {
                     isListening = false
-                    scope.launch { snackbarHostState.showSnackbar(it) }
+                    showMessage(it)
                 }
             )
         }
@@ -256,7 +277,7 @@ private fun YamoneEnglishApp() {
                 },
                 onError = {
                     isListening = false
-                    scope.launch { snackbarHostState.showSnackbar(it) }
+                    showMessage(it)
                 }
             )
         }
@@ -308,7 +329,7 @@ private fun YamoneEnglishApp() {
         when (selectedCourse) {
             CourseLevel.AGE_5_7 -> Age57AssessmentScreen(
                 isListening = isListening,
-                speak = { tts.speak(it, speechRate) },
+                speak = speakEnglish,
                 listen = startListening,
                 onReviewResult = reviewCallback,
                 onFinish = { summary ->
@@ -321,7 +342,7 @@ private fun YamoneEnglishApp() {
 
             CourseLevel.AGE_8_10 -> Age810AssessmentScreen(
                 isListening = isListening,
-                speak = { tts.speak(it, speechRate) },
+                speak = speakEnglish,
                 listen = startListening,
                 onReviewResult = reviewCallback,
                 onFinish = { summary ->
@@ -334,7 +355,7 @@ private fun YamoneEnglishApp() {
 
             CourseLevel.AGE_11_13 -> Age1113AssessmentScreen(
                 isListening = isListening,
-                speak = { tts.speak(it, speechRate) },
+                speak = speakEnglish,
                 listen = startListening,
                 onReviewResult = reviewCallback,
                 onFinish = { summary ->
@@ -347,7 +368,7 @@ private fun YamoneEnglishApp() {
 
             CourseLevel.AGE_14_16 -> Age1416AssessmentScreen(
                 isListening = isListening,
-                speak = { tts.speak(it, speechRate) },
+                speak = speakEnglish,
                 listen = startListening,
                 onReviewResult = reviewCallback,
                 onFinish = { summary ->
@@ -360,7 +381,7 @@ private fun YamoneEnglishApp() {
 
             CourseLevel.AGE_17_20 -> Age1720AssessmentScreen(
                 isListening = isListening,
-                speak = { tts.speak(it, speechRate) },
+                speak = speakEnglish,
                 listen = startListening,
                 onReviewResult = reviewCallback,
                 onFinish = { summary ->
@@ -380,7 +401,7 @@ private fun YamoneEnglishApp() {
             showKorean = showKorean,
             showSoundGuide = showSoundGuide,
             isListening = isListening,
-            speak = { tts.speak(it, speechRate) },
+            speak = speakEnglish,
             listen = startListening,
             onBack = { selectedLesson = null },
             onSpeakingResult = { id, success ->
@@ -405,6 +426,7 @@ private fun YamoneEnglishApp() {
                     null
                 } else {
                     CourseCatalog.lessons(current.course)
+                        .sortedBy { it.courseLessonNumber }
                         .firstOrNull { it.courseLessonNumber > current.courseLessonNumber }
                 }
             }
@@ -465,26 +487,26 @@ private fun YamoneEnglishApp() {
                 onOpenReview = { tabIndex = AppTab.REVIEW.ordinal },
                 onOpenSettings = { showSettings = true }
             )
+
             AppTab.LISTEN -> EnhancedListenScreen(
                 modifier = Modifier.padding(padding),
                 course = selectedCourse,
                 player = listeningPlayer,
                 speechRate = speechRate,
-                onMessage = { message ->
-                    scope.launch { snackbarHostState.showSnackbar(message) }
-                },
+                onMessage = showMessage,
                 onReviewResult = { id, kind, success ->
                     if (success) reviewStore.recordSuccess(id, kind)
                     else reviewStore.recordError(id, kind)
                     unifiedReviewItems = reviewStore.items()
                 }
             )
+
             AppTab.THINK -> ThinkingTrainingScreen(
                 modifier = Modifier.padding(padding),
                 course = selectedCourse,
-                completedIds = thinkingCompleted,
+                completedIds = CourseProgressResolver.completedIds(selectedCourse, thinkingCompleted),
                 isListening = isListening,
-                speak = { tts.speak(it, speechRate) },
+                speak = speakEnglish,
                 listen = startListening,
                 onComplete = { id ->
                     store.markThinkingCompleted(id)
@@ -501,11 +523,12 @@ private fun YamoneEnglishApp() {
                     unifiedReviewItems = reviewStore.items()
                 }
             )
+
             AppTab.TALK -> ExpressionTalkScreen(
                 modifier = Modifier.padding(padding),
                 completedIds = expressionCompleted,
                 isListening = isListening,
-                speak = { tts.speak(it, speechRate) },
+                speak = speakEnglish,
                 listenKorean = startKoreanListening,
                 listenEnglish = startListening,
                 onComplete = { id ->
@@ -513,12 +536,15 @@ private fun YamoneEnglishApp() {
                     expressionCompleted = store.expressionCompletedIds()
                 }
             )
+
             AppTab.REVIEW -> UnifiedReviewScreen(
                 modifier = Modifier.padding(padding),
                 course = selectedCourse,
-                reviewItems = unifiedReviewItems,
+                reviewItems = unifiedReviewItems.filter {
+                    LessonCatalog.byId(it.lessonId)?.course == selectedCourse
+                },
                 isListening = isListening,
-                speak = { tts.speak(it, speechRate) },
+                speak = speakEnglish,
                 listen = startListening,
                 onResult = { id, kind, success ->
                     if (success) reviewStore.recordSuccess(id, kind)
@@ -552,18 +578,90 @@ private fun TodayScreen(
     onOpenReview: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
-    val courseLessons = CourseCatalog.lessons(course)
-    val courseIds = courseLessons.map { it.id }.toSet()
-    val completedInCourse = completed.intersect(courseIds)
-    val thinkingCompletedInCourse = thinkingCompleted.intersect(courseIds)
-    val total = courseLessons.size
-    val next = courseLessons.firstOrNull { it.id !in completedInCourse } ?: courseLessons.last()
+    val courseLessons = CourseCatalog.lessons(course).sortedBy { it.courseLessonNumber }
     val courseSections = CourseCatalog.sections(course)
-    var sectionIndex by rememberSaveable(course.name, completedInCourse.size) {
-        mutableIntStateOf(CourseCatalog.sectionIndexForLesson(course, next.id))
+
+    if (courseLessons.isEmpty() || courseSections.isEmpty()) {
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                Text("Yamone English", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                Text("선택한 과정 데이터를 불러올 수 없습니다.")
+                Spacer(Modifier.height(8.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(CourseLevel.entries) { item ->
+                        FilterChip(
+                            selected = course == item,
+                            onClick = { onCourseChange(item) },
+                            label = { Text(item.label) }
+                        )
+                    }
+                }
+            }
+        }
+        return
     }
+
+    val progress = CourseProgressResolver.resolve(course, completed)
+    val completedInCourse = CourseProgressResolver.completedIds(course, completed)
+    val thinkingCompletedInCourse = CourseProgressResolver.completedIds(course, thinkingCompleted)
+    val focusLesson = progress.nextLesson ?: courseLessons.last()
+    val initialSectionIndex = CourseCatalog.sectionIndexForLesson(course, focusLesson.id)
+        .coerceIn(courseSections.indices)
+    var sectionIndex by rememberSaveable(course.name) {
+        mutableIntStateOf(initialSectionIndex)
+    }
+    if (sectionIndex !in courseSections.indices) sectionIndex = initialSectionIndex
     val selectedSection = courseSections[sectionIndex]
-    val sectionLessons = selectedSection.lessons()
+    val sectionLessons = selectedSection.lessons().filter { it.course == course }
+
+    val assessmentTitle: String
+    val assessmentSubtitle: String
+    val assessmentResult: String?
+    when (course) {
+        CourseLevel.AGE_5_7 -> {
+            assessmentTitle = "5~7세 과정 테스트"
+            assessmentSubtitle = "듣기 · 말하기 · 어순 · 상황 대응 16문항"
+            assessmentResult = latestAssessment?.let {
+                "최근 결과 ${it.totalCorrect} / ${it.totalQuestions} · ${it.overallLabel}"
+            }
+        }
+
+        CourseLevel.AGE_8_10 -> {
+            assessmentTitle = "8~10세 과정 테스트"
+            assessmentSubtitle = "듣기 · 말하기 · 어순 · 상황·추론 20문항"
+            assessmentResult = latestAge810Assessment?.let {
+                "최근 결과 ${it.totalCorrect} / ${it.totalQuestions} · ${it.overallLabel}"
+            }
+        }
+
+        CourseLevel.AGE_11_13 -> {
+            assessmentTitle = "11~13세 과정 테스트"
+            assessmentSubtitle = "듣기 · 말하기 · 어순 · 상황·판단 24문항"
+            assessmentResult = latestAge1113Assessment?.let {
+                "최근 결과 ${it.totalCorrect} / ${it.totalQuestions} · ${it.overallLabel}"
+            }
+        }
+
+        CourseLevel.AGE_14_16 -> {
+            assessmentTitle = "14~16세 과정 테스트"
+            assessmentSubtitle = "듣기 · 말하기 · 어순 · 상황·판단 28문항"
+            assessmentResult = latestAge1416Assessment?.let {
+                "최근 결과 ${it.totalCorrect} / ${it.totalQuestions} · ${it.overallLabel}"
+            }
+        }
+
+        CourseLevel.AGE_17_20 -> {
+            assessmentTitle = "17~20세 과정 테스트"
+            assessmentSubtitle = "듣기 · 말하기 · 어순 · 상황·판단 28문항"
+            assessmentResult = latestAge1720Assessment?.let {
+                "최근 결과 ${it.totalCorrect} / ${it.totalQuestions} · ${it.overallLabel}"
+            }
+        }
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -591,13 +689,13 @@ private fun TodayScreen(
             }
             Spacer(Modifier.height(12.dp))
             Text(
-                "영어권 " + course.label + " 회화 · " + course.description,
+                "영어권 ${course.label} 회화 · ${course.description}",
                 fontWeight = FontWeight.Bold
             )
-            Text(total.toString() + "개 표현을 듣고, 이해하고, 직접 말합니다.")
+            Text("${progress.totalLessons}개 표현을 듣고, 이해하고, 직접 말합니다.")
             Spacer(Modifier.height(12.dp))
             LinearProgressIndicator(
-                progress = completedInCourse.size.toFloat() / total.coerceAtLeast(1).toFloat(),
+                progress = progress.completedLessons.toFloat() / progress.totalLessons.coerceAtLeast(1).toFloat(),
                 modifier = Modifier.fillMaxWidth()
             )
             Row(
@@ -605,7 +703,7 @@ private fun TodayScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(completedInCourse.size.toString() + " / " + total + " 완료")
+                Text("${progress.completedLessons} / ${progress.totalLessons} 완료")
                 TextButton(onClick = onOpenSettings) {
                     Icon(Icons.Default.Settings, contentDescription = null)
                     Spacer(Modifier.size(4.dp))
@@ -615,22 +713,46 @@ private fun TodayScreen(
         }
 
         item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                onClick = { onOpenLesson(next) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(Modifier.padding(18.dp)) {
-                    Text("이어서 학습", fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        next.emoji + " " + next.courseLessonNumber + ". " + next.title,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(next.target, fontSize = 18.sp)
-                    Spacer(Modifier.height(10.dp))
-                    Text("듣기 → 이해 → 말하기 → 내 표현 → 대화")
+            if (progress.isComplete) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    onClick = onOpenAssessment,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(18.dp)) {
+                        Text("과정 학습 완료", fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "${course.label} 100개 레슨을 모두 완료했어요.",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text("이제 과정 종료 테스트로 듣기·말하기·어순·상황 대응을 확인해보세요.")
+                        Spacer(Modifier.height(8.dp))
+                        Text("과정 테스트 열기", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    }
+                }
+            } else {
+                progress.nextLesson?.let { next ->
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                        onClick = { onOpenLesson(next) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(Modifier.padding(18.dp)) {
+                            Text("이어서 학습", fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "${next.emoji} ${next.courseLessonNumber}. ${next.title}",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(next.target, fontSize = 18.sp)
+                            Spacer(Modifier.height(10.dp))
+                            Text("남은 레슨 ${progress.remainingLessons}개 · 듣기 → 이해 → 말하기 → 내 표현 → 대화")
+                        }
+                    }
                 }
             }
         }
@@ -643,10 +765,9 @@ private fun TodayScreen(
                 ) {
                     Text("오늘 할 일", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Text(
-                        "레슨 " + completedInCourse.size + "/" + total +
-                            " · 어순 " + thinkingCompletedInCourse.size + "/" + total +
-                            " · 내 표현 " + expressionCompletedCount + "/" +
-                            NaturalExpressionCatalog.expressions.size,
+                        "레슨 ${progress.completedLessons}/${progress.totalLessons}" +
+                            " · 어순 ${thinkingCompletedInCourse.size}/${progress.totalLessons}" +
+                            " · 내 표현(공통) $expressionCompletedCount/${NaturalExpressionCatalog.expressions.size}",
                         fontSize = 13.sp
                     )
 
@@ -655,7 +776,7 @@ private fun TodayScreen(
                             onClick = onOpenReview,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("오늘 복습 " + reviewDueCount + "개 먼저 하기")
+                            Text("오늘 복습 ${reviewDueCount}개 먼저 하기")
                         }
                     }
 
@@ -683,137 +804,35 @@ private fun TodayScreen(
             }
         }
 
-        when (course) {
-            CourseLevel.AGE_5_7 -> {
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                        onClick = onOpenAssessment,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(Modifier.padding(18.dp)) {
-                            Text("5~7세 과정 테스트", fontWeight = FontWeight.Bold)
-                            Text("듣기 · 말하기 · 어순 · 상황 대응 16문항")
-                            Spacer(Modifier.height(8.dp))
-                            if (latestAssessment == null) {
-                                Text("100개 레슨을 마친 뒤 실력을 확인해보세요.")
-                            } else {
-                                Text(
-                                    "최근 결과 " + latestAssessment.totalCorrect + " / " +
-                                        latestAssessment.totalQuestions + " · " + latestAssessment.overallLabel,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                onClick = onOpenAssessment,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.padding(18.dp)) {
+                    Text(assessmentTitle, fontWeight = FontWeight.Bold)
+                    Text(assessmentSubtitle)
+                    Spacer(Modifier.height(8.dp))
+                    if (assessmentResult != null) {
+                        Text(
+                            assessmentResult,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (!progress.isComplete) {
+                            Spacer(Modifier.height(4.dp))
+                            Text("기존 테스트 결과는 유지됩니다. 현재 레슨 진행과 별도로 다시 응시할 수 있어요.", fontSize = 12.sp)
                         }
-                    }
-                }
-            }
-
-            CourseLevel.AGE_8_10 -> {
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                        onClick = onOpenAssessment,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(Modifier.padding(18.dp)) {
-                            Text("8~10세 과정 테스트", fontWeight = FontWeight.Bold)
-                            Text("듣기 · 말하기 · 어순 · 상황·추론 20문항")
-                            Spacer(Modifier.height(8.dp))
-                            if (latestAge810Assessment == null) {
-                                Text("100개 레슨을 마친 뒤 실력을 확인해보세요.")
-                            } else {
-                                Text(
-                                    "최근 결과 " + latestAge810Assessment.totalCorrect + " / " +
-                                        latestAge810Assessment.totalQuestions + " · " +
-                                        latestAge810Assessment.overallLabel,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            CourseLevel.AGE_11_13 -> {
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                        onClick = onOpenAssessment,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(Modifier.padding(18.dp)) {
-                            Text("11~13세 과정 테스트", fontWeight = FontWeight.Bold)
-                            Text("듣기 · 말하기 · 어순 · 상황·판단 24문항")
-                            Spacer(Modifier.height(8.dp))
-                            if (latestAge1113Assessment == null) {
-                                Text("100개 레슨을 마친 뒤 실력을 확인해보세요.")
-                            } else {
-                                Text(
-                                    "최근 결과 " + latestAge1113Assessment.totalCorrect + " / " +
-                                        latestAge1113Assessment.totalQuestions + " · " +
-                                        latestAge1113Assessment.overallLabel,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            CourseLevel.AGE_14_16 -> {
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                        onClick = onOpenAssessment,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(Modifier.padding(18.dp)) {
-                            Text("14~16세 과정 테스트", fontWeight = FontWeight.Bold)
-                            Text("듣기 · 말하기 · 어순 · 상황·판단 28문항")
-                            Spacer(Modifier.height(8.dp))
-                            if (latestAge1416Assessment == null) {
-                                Text("100개 레슨을 마친 뒤 실력을 확인해보세요.")
-                            } else {
-                                Text(
-                                    "최근 결과 " + latestAge1416Assessment.totalCorrect + " / " +
-                                        latestAge1416Assessment.totalQuestions + " · " +
-                                        latestAge1416Assessment.overallLabel,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            CourseLevel.AGE_17_20 -> {
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                        onClick = onOpenAssessment,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(Modifier.padding(18.dp)) {
-                            Text("17~20세 과정 테스트", fontWeight = FontWeight.Bold)
-                            Text("듣기 · 말하기 · 어순 · 상황·판단 28문항")
-                            Spacer(Modifier.height(8.dp))
-                            if (latestAge1720Assessment == null) {
-                                Text("100개 레슨을 마친 뒤 실력을 확인해보세요.")
-                            } else {
-                                Text(
-                                    "최근 결과 " + latestAge1720Assessment.totalCorrect + " / " +
-                                        latestAge1720Assessment.totalQuestions + " · " +
-                                        latestAge1720Assessment.overallLabel,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
+                    } else if (progress.isComplete) {
+                        Text(
+                            "100개 레슨을 모두 마쳤어요. 지금 실력을 확인해보세요.",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        Text("레슨 ${progress.completedLessons}/100 · 100개 완료 후 응시를 권장합니다.")
+                        Text("원하면 지금도 테스트를 미리 확인할 수 있어요.", fontSize = 12.sp)
                     }
                 }
             }
@@ -837,12 +856,18 @@ private fun TodayScreen(
             Text(selectedSection.title, fontWeight = FontWeight.Bold)
         }
 
-        items(sectionLessons, key = { it.id }) { lesson ->
-            LessonCard(
-                lesson = lesson,
-                completed = lesson.id in completedInCourse,
-                onClick = { onOpenLesson(lesson) }
-            )
+        if (sectionLessons.isEmpty()) {
+            item {
+                Text("이 구간의 레슨을 불러올 수 없습니다.")
+            }
+        } else {
+            items(sectionLessons, key = { it.id }) { lesson ->
+                LessonCard(
+                    lesson = lesson,
+                    completed = lesson.id in completedInCourse,
+                    onClick = { onOpenLesson(lesson) }
+                )
+            }
         }
     }
 }
@@ -858,7 +883,7 @@ private fun LessonCard(lesson: Lesson, completed: Boolean, onClick: () -> Unit) 
             Text(lesson.emoji, fontSize = 28.sp)
             Column(Modifier.weight(1f)) {
                 Text(
-                    lesson.courseLessonNumber.toString() + ". " + lesson.title,
+                    "${lesson.courseLessonNumber}. ${lesson.title}",
                     fontWeight = FontWeight.Bold
                 )
                 Text(lesson.target)
@@ -898,7 +923,7 @@ private fun LessonScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(lesson.emoji + " " + lesson.title) },
+                title = { Text("${lesson.emoji} ${lesson.title}") },
                 navigationIcon = {
                     TextButton(onClick = onBack) { Text("닫기") }
                 }
@@ -979,7 +1004,7 @@ private fun LessonScreen(
                     if (recognized.isNotBlank()) {
                         InfoCard("들린 문장", recognized)
                         Text(
-                            "문장 인식 일치도 " + matchScore + "%",
+                            "문장 인식 일치도 $matchScore%",
                             fontWeight = FontWeight.Bold,
                             color = if (matchScore >= 70) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
                         )
@@ -1003,12 +1028,16 @@ private fun LessonScreen(
                     }
                     if (recognized.isNotBlank()) {
                         InfoCard("내가 말한 영어", recognized)
-                        InfoCard("자연스러운 예", lesson.accepted.joinToString("  /  "))
-                        OutlinedButton(
-                            onClick = { speak(lesson.accepted.first()) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("예문 듣기")
+                        if (lesson.accepted.isNotEmpty()) {
+                            InfoCard("자연스러운 예", lesson.accepted.joinToString("  /  "))
+                            lesson.accepted.firstOrNull()?.let { example ->
+                                OutlinedButton(
+                                    onClick = { speak(example) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("예문 듣기")
+                                }
+                            }
                         }
                     }
                 }
@@ -1041,12 +1070,14 @@ private fun LessonScreen(
                     }
                     if (recognized.isNotBlank()) {
                         InfoCard("나", recognized)
-                        InfoCard("상대", coachReply)
-                        OutlinedButton(
-                            onClick = { speak(coachReply) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("대답 듣기")
+                        if (coachReply.isNotBlank()) {
+                            InfoCard("상대", coachReply)
+                            OutlinedButton(
+                                onClick = { speak(coachReply) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("대답 듣기")
+                            }
                         }
                     }
                 }
@@ -1186,320 +1217,8 @@ private fun DialoguePreviewCard(lesson: Lesson) {
         ) {
             Text("이 레슨의 실제 대화", fontWeight = FontWeight.Bold)
             dialogue.lines.forEach { line ->
-                Text(line.speaker + "  " + line.english, fontWeight = FontWeight.SemiBold)
-                Text("    " + line.korean, fontSize = 14.sp)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ListenScreen(
-    modifier: Modifier = Modifier,
-    player: ListeningPlayer,
-    speechRate: Float,
-    onMessage: (String) -> Unit
-) {
-    var modeIndex by rememberSaveable { mutableIntStateOf(0) }
-    var selectedLessonId by rememberSaveable { mutableIntStateOf(1) }
-    var isPlaying by remember { mutableStateOf(false) }
-    var playingAll by remember { mutableStateOf(false) }
-    var currentIndex by remember { mutableIntStateOf(-1) }
-    var currentSegment by remember { mutableStateOf<ListeningSegment?>(null) }
-
-    val mode = ListenMode.entries[modeIndex]
-    val selectedLesson = LessonCatalog.byId(selectedLessonId) ?: LessonCatalog.lessons.first()
-
-    fun start(segments: List<ListeningSegment>, all: Boolean) {
-        isPlaying = true
-        playingAll = all
-        currentIndex = -1
-        currentSegment = null
-        player.play(
-            newSegments = segments,
-            rate = speechRate,
-            onSegmentChanged = { index, segment ->
-                currentIndex = index
-                currentSegment = segment
-            },
-            onComplete = {
-                isPlaying = false
-                playingAll = false
-                onMessage("연속 듣기가 끝났습니다.")
-            },
-            onError = { message ->
-                isPlaying = false
-                playingAll = false
-                onMessage(message)
-            }
-        )
-    }
-
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            Text("연속 듣기", fontSize = 30.sp, fontWeight = FontWeight.Bold)
-            Text("화면을 조작하지 않아도 핵심 표현과 대화를 차례로 들을 수 있습니다.")
-        }
-
-        item {
-            Text("듣기 방식", fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(6.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(ListenMode.entries) { item ->
-                    val index = ListenMode.entries.indexOf(item)
-                    FilterChip(
-                        selected = modeIndex == index,
-                        onClick = {
-                            if (isPlaying) player.stop()
-                            isPlaying = false
-                            playingAll = false
-                            modeIndex = index
-                        },
-                        label = { Text(item.label) }
-                    )
-                }
-            }
-        }
-
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("선택 레슨", fontWeight = FontWeight.Bold)
-                    Text(
-                        selectedLesson.emoji + " " + selectedLesson.id + ". " + selectedLesson.title,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(selectedLesson.target)
-                    Spacer(Modifier.height(10.dp))
-                    Button(
-                        onClick = {
-                            start(
-                                ListeningPlaylistBuilder.lesson(selectedLesson, mode),
-                                false
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("이 레슨 전체 듣기")
-                    }
-                }
-            }
-        }
-
-        item {
-            Button(
-                onClick = { start(ListeningPlaylistBuilder.all(mode), true) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.VolumeUp, contentDescription = null)
-                Spacer(Modifier.size(8.dp))
-                Text(LessonCatalog.lessons.size.toString() + "개 레슨 전체 연속 듣기")
-            }
-        }
-
-        if (isPlaying) {
-            item {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(
-                            if (playingAll) "전체 연속 재생 중" else "레슨 연속 재생 중",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        currentSegment?.let { segment ->
-                            val lesson = LessonCatalog.byId(segment.lessonId)
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                (lesson?.emoji ?: "") + " " + segment.lessonId + ". " + (lesson?.title ?: ""),
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                (segment.speaker?.let { it + " · " } ?: "") + segment.part,
-                                fontSize = 13.sp
-                            )
-                            Text(segment.text, fontSize = 21.sp, fontWeight = FontWeight.SemiBold)
-                            if (currentIndex >= 0) {
-                                Text("재생 항목 " + (currentIndex + 1), fontSize = 12.sp)
-                            }
-                        }
-                        Spacer(Modifier.height(10.dp))
-                        OutlinedButton(
-                            onClick = {
-                                player.stop()
-                                isPlaying = false
-                                playingAll = false
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("정지")
-                        }
-                    }
-                }
-            }
-        }
-
-        item {
-            HorizontalDivider()
-            Text("레슨 선택", fontSize = 21.sp, fontWeight = FontWeight.Bold)
-        }
-
-        items(LessonCatalog.lessons, key = { "listen-" + it.id }) { lesson ->
-            Card(
-                onClick = {
-                    if (isPlaying) player.stop()
-                    isPlaying = false
-                    playingAll = false
-                    selectedLessonId = lesson.id
-                },
-                colors = CardDefaults.cardColors(
-                    containerColor = if (selectedLessonId == lesson.id)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.surface
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(lesson.emoji, fontSize = 24.sp)
-                    Spacer(Modifier.size(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(lesson.id.toString() + ". " + lesson.title, fontWeight = FontWeight.Bold)
-                        Text(lesson.target)
-                    }
-                    Text(if (selectedLessonId == lesson.id) "선택" else "")
-                }
-            }
-        }
-
-        item {
-            Text(
-                "영어만: 영어 대화만 재생 · 영어→해석: 각 문장 뒤 한국어 · 영어→해석→영어: 뜻을 확인한 뒤 같은 영어를 다시 듣습니다.",
-                fontSize = 12.sp
-            )
-        }
-    }
-}
-
-@Composable
-private fun FreeTalkScreen(
-    modifier: Modifier = Modifier,
-    isListening: Boolean,
-    speak: (String) -> Unit,
-    listen: ((String) -> Unit) -> Unit
-) {
-    val topics = listOf("인사", "오늘", "음식", "취미")
-    var topic by remember { mutableStateOf(topics.first()) }
-    var coach by remember { mutableStateOf(LocalConversationEngine.opening(topic)) }
-    var userText by remember { mutableStateOf("") }
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(20.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Text("자유 대화", fontSize = 30.sp, fontWeight = FontWeight.Bold)
-        Text("현재 버전은 서버 없이 동작하는 짧은 회화 코치입니다.")
-
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(topics) { item ->
-                FilterChip(
-                    selected = topic == item,
-                    onClick = {
-                        topic = item
-                        coach = LocalConversationEngine.opening(item)
-                        userText = ""
-                    },
-                    label = { Text(item) }
-                )
-            }
-        }
-
-        InfoCard("상대", coach)
-        Button(onClick = { speak(coach) }, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Default.VolumeUp, contentDescription = null)
-            Spacer(Modifier.size(8.dp))
-            Text("상대 말 듣기")
-        }
-
-        Button(
-            onClick = {
-                listen { text ->
-                    userText = text
-                    coach = LocalConversationEngine.reply(text)
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.Default.Mic, contentDescription = null)
-            Spacer(Modifier.size(8.dp))
-            Text(if (isListening) "듣고 있어요..." else "내 생각 영어로 말하기")
-        }
-
-        if (userText.isNotBlank()) {
-            InfoCard("나", userText)
-            InfoCard("다음 질문", coach)
-            OutlinedButton(onClick = { speak(coach) }, modifier = Modifier.fillMaxWidth()) {
-                Text("다음 질문 듣기")
-            }
-        }
-
-        HorizontalDivider()
-        Text("목표", fontWeight = FontWeight.Bold)
-        Text("정해진 답을 맞히는 것이 아니라, 생각나는 내용을 짧게라도 영어로 계속 이어 말하는 연습입니다.")
-        Text("온라인 AI 대화는 이후 ConversationGateway를 연결해 확장하도록 준비되어 있습니다.", fontSize = 12.sp)
-    }
-}
-
-@Composable
-private fun ReviewScreen(
-    modifier: Modifier = Modifier,
-    reviewIds: Set<Int>,
-    completed: Set<Int>,
-    onOpenLesson: (Lesson) -> Unit
-) {
-    val targets = reviewIds.mapNotNull { LessonCatalog.byId(it) }.sortedBy { it.id }
-
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            Text("복습", fontSize = 30.sp, fontWeight = FontWeight.Bold)
-            Text("말하기에서 어려웠던 표현을 다시 연습합니다.")
-            Spacer(Modifier.height(8.dp))
-            Text("완료 " + completed.size + "개 · 복습 " + targets.size + "개")
-        }
-
-        if (targets.isEmpty()) {
-            item {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("🌱", fontSize = 34.sp)
-                        Text("아직 복습할 표현이 없어요.", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        } else {
-            items(targets, key = { it.id }) { lesson ->
-                LessonCard(lesson, completed = lesson.id in completed) {
-                    onOpenLesson(lesson)
-                }
+                Text("${line.speaker}  ${line.english}", fontWeight = FontWeight.SemiBold)
+                Text("    ${line.korean}", fontSize = 14.sp)
             }
         }
     }
@@ -1527,67 +1246,67 @@ private fun SettingsScreen(
             )
         }
     ) { padding ->
-    Column(
-        modifier = modifier
-            .padding(padding)
-            .fillMaxSize()
-            .padding(20.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Text("설정", fontSize = 30.sp, fontWeight = FontWeight.Bold)
-
-        Text("듣기 속도", fontWeight = FontWeight.Bold)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(
-                0.7f to "천천히",
-                0.85f to "학습",
-                1.0f to "자연스럽게",
-                1.12f to "실제 빠름"
-            ).forEach { pair ->
-                val rate = pair.first
-                val label = pair.second
-                FilterChip(
-                    selected = speechRate == rate,
-                    onClick = { onSpeechRateChange(rate) },
-                    label = { Text(label) }
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = modifier
+                .padding(padding)
+                .fillMaxSize()
+                .padding(20.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Column(Modifier.weight(1f)) {
-                Text("한국어 도움말", fontWeight = FontWeight.Bold)
-                Text("뜻과 한국어 미션을 함께 표시")
+            Text("설정", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+
+            Text("듣기 속도", fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    0.7f to "천천히",
+                    0.85f to "학습",
+                    1.0f to "자연스럽게",
+                    1.12f to "실제 빠름"
+                ).forEach { pair ->
+                    val rate = pair.first
+                    val label = pair.second
+                    FilterChip(
+                        selected = speechRate == rate,
+                        onClick = { onSpeechRateChange(rate) },
+                        label = { Text(label) }
+                    )
+                }
             }
-            Switch(checked = showKorean, onCheckedChange = onShowKoreanChange)
-        }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text("한글 발음·리듬 가이드", fontWeight = FontWeight.Bold)
-                Text("강세, 붙여읽기, 높낮이와 한국어식 소리 표시")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("한국어 도움말", fontWeight = FontWeight.Bold)
+                    Text("뜻과 한국어 미션을 함께 표시")
+                }
+                Switch(checked = showKorean, onCheckedChange = onShowKoreanChange)
             }
-            Switch(checked = showSoundGuide, onCheckedChange = onShowSoundGuideChange)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("한글 발음·리듬 가이드", fontWeight = FontWeight.Bold)
+                    Text("강세, 붙여읽기, 높낮이와 한국어식 소리 표시")
+                }
+                Switch(checked = showSoundGuide, onCheckedChange = onShowSoundGuideChange)
+            }
+
+            HorizontalDivider()
+            Text("추후 활성화 준비", fontWeight = FontWeight.Bold)
+            FutureFeatureRow("로그인 / 기기 동기화", FeatureFlags.AUTH_ENABLED)
+            FutureFeatureRow("광고 / 광고 제거", FeatureFlags.ADS_ENABLED)
+            FutureFeatureRow("콘텐츠 업데이트", FeatureFlags.CONTENT_UPDATE_ENABLED)
+            FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
+
+            HorizontalDivider()
+            Text("Yamone English v0.8.1")
+            Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
         }
-
-        HorizontalDivider()
-        Text("추후 활성화 준비", fontWeight = FontWeight.Bold)
-        FutureFeatureRow("로그인 / 기기 동기화", FeatureFlags.AUTH_ENABLED)
-        FutureFeatureRow("광고 / 광고 제거", FeatureFlags.ADS_ENABLED)
-        FutureFeatureRow("콘텐츠 업데이트", FeatureFlags.CONTENT_UPDATE_ENABLED)
-        FutureFeatureRow("온라인 AI 회화", FeatureFlags.ONLINE_AI_ENABLED)
-
-        HorizontalDivider()
-        Text("Yamone English v0.7.1")
-        Text("현재 콘텐츠와 학습 기록은 앱/기기 내부를 중심으로 사용합니다.", fontSize = 12.sp)
-    }
     }
 }
 
