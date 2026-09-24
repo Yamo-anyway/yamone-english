@@ -1,8 +1,31 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+val localKeystorePropertiesFile = rootProject.file("keystore.properties")
+val localKeystoreProperties = Properties().apply {
+    if (localKeystorePropertiesFile.isFile) {
+        localKeystorePropertiesFile.inputStream().use(::load)
+    }
+}
+
+fun signingSecret(environmentName: String, propertyName: String): String? =
+    providers.environmentVariable(environmentName).orNull?.takeIf { it.isNotBlank() }
+        ?: localKeystoreProperties.getProperty(propertyName)?.takeIf { it.isNotBlank() }
+
+val releaseStorePath = signingSecret("YAMONE_UPLOAD_STORE_FILE", "storeFile")
+val releaseStorePassword = signingSecret("YAMONE_UPLOAD_STORE_PASSWORD", "storePassword")
+val releaseKeyAlias = signingSecret("YAMONE_UPLOAD_KEY_ALIAS", "keyAlias")
+val releaseKeyPassword = signingSecret("YAMONE_UPLOAD_KEY_PASSWORD", "keyPassword")
+val releaseStoreFile = releaseStorePath?.let(rootProject::file)
+val hasReleaseSigning = releaseStoreFile?.isFile == true &&
+    !releaseStorePassword.isNullOrBlank() &&
+    !releaseKeyAlias.isNullOrBlank() &&
+    !releaseKeyPassword.isNullOrBlank()
 
 android {
     namespace = "com.yamone.english"
@@ -12,8 +35,8 @@ android {
         applicationId = "com.yamone.english"
         minSdk = 26
         targetSdk = 36
-        versionCode = 32
-        versionName = "0.8.4"
+        versionCode = 33
+        versionName = "0.8.5"
     }
 
     compileOptions {
@@ -30,6 +53,17 @@ android {
         buildConfig = true
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("uploadRelease") {
+                storeFile = requireNotNull(releaseStoreFile)
+                storePassword = requireNotNull(releaseStorePassword)
+                keyAlias = requireNotNull(releaseKeyAlias)
+                keyPassword = requireNotNull(releaseKeyPassword)
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -37,6 +71,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("uploadRelease")
+            }
         }
     }
 
